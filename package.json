@@ -1,6 +1,7 @@
 {
     "name": "app-sync-mapping-template-model",
-    "private": true,
+    "version": "0.1.0",
+    "description": "A library exploring an object model for AWS AppSync Mapping Templates",
     "main": "lib/main.js",
     "scripts": {
         "build": "tsc",
@@ -8,16 +9,16 @@
         "test": "jest --colors"
     },
     "devDependencies": {
-        "@types/jest": "^26.0.4",
+        "@types/jest": "26.0.4",
         "@types/node": "13.13.4",
         "@typescript-eslint/eslint-plugin": "2.30.0",
         "@typescript-eslint/parser": "2.30.0",
         "eslint": "6.8.0",
         "eslint-config-prettier": "6.11.0",
         "eslint-plugin-prettier": "3.1.3",
-        "jest": "^26.1.0",
+        "jest": "26.1.0",
         "prettier": "2.0.5",
-        "ts-jest": "^26.1.1",
+        "ts-jest": "26.1.1",
         "ts-node": "8.10.2",
         "typescript": "3.8.3"
     },
