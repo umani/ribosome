@@ -1,18 +1,17 @@
-import { Util } from "./util"
-import { Context } from "./Context"
+import { Util } from "./appsync/util"
+import { Context, ResultContext } from "./appsync/context"
 import { TemplateBuilder } from "./builder"
-import { DynamoDbRequestUtils } from "./dynamo"
+import { DynamoDbRequestUtils } from "./dynamo/dynamo"
 
 export abstract class RequestResponseTemplate extends TemplateBuilder {
-    readonly ctx = new Context(this)
-    readonly util = new Util()
+    readonly util = new Util(this)
 }
 
 export class RequestTemplate extends RequestResponseTemplate {
-    // Contains request-specific utilities like DynamoDB actions
     readonly dynamoDb = new DynamoDbRequestUtils(this)
+    readonly ctx = new Context(this)
 }
 
-export declare class ResponseTemplate extends RequestResponseTemplate {
-    // Contains response-specific utilities like the result
+export class ResponseTemplate extends RequestResponseTemplate {
+    readonly ctx = new ResultContext(this)
 }

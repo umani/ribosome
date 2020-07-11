@@ -1,16 +1,28 @@
-import { RequestTemplate } from "./request-response-template"
+import { RequestTemplate, ResponseTemplate } from "./request-response-template"
+import { MappingTemplateVersion } from "./mapping-template"
 
-export declare class Api {
-    public static requestTemplate(f: (r: RequestTemplate) => void): void
+export class Api {
+    private static globalVersion = MappingTemplateVersion.V1
+
+    public static setGlobalVersion(v: MappingTemplateVersion): void {
+        this.globalVersion = v
+    }
+
+    public static requestTemplate(
+        f: (r: RequestTemplate) => void,
+        v: MappingTemplateVersion = Api.globalVersion,
+    ): string {
+        const r = new RequestTemplate()
+        f(r)
+        return r.renderTemplate(v, 0)
+    }
+
+    public static responseTemplate(
+        f: (r: ResponseTemplate) => void,
+        v: MappingTemplateVersion = Api.globalVersion,
+    ): string {
+        const r = new ResponseTemplate()
+        f(r)
+        return r.renderTemplate(v, 0)
+    }
 }
-
-Api.requestTemplate(r => {
-    const id = r.variable(`"ENTITY#" + ${r.util.autoId()}`)
-    r.unless(r.ctx.identity.groups.contains("admins"), [r.util.unauthorized()])
-    return r.dynamoDb.putItem({
-        key: {
-            pk: id,
-            sk: r.ctx.args("arg"),
-        },
-    })
-})

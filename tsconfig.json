@@ -2,9 +2,9 @@
     "compilerOptions": {
         "baseUrl": "./",
         "outDir": "build/",
-        "target": "es2019",
+        "target": "es2017",
         "lib": ["es2019"],
-        "module": "es2015",
+        "module": "CommonJS",
         "moduleResolution": "node",
         "esModuleInterop": true,
         "inlineSourceMap": true,
