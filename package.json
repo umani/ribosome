@@ -1,10 +1,13 @@
 {
     "name": "app-sync-mapping-template-model",
+    "author": "Duarte Nunes",
     "version": "0.1.0",
     "description": "A library exploring an object model for AWS AppSync Mapping Templates",
+    "license": "UNLICENSED",
     "main": "lib/main.js",
+    "types": "./lib/main.d.ts",
     "scripts": {
-        "build": "tsc",
+        "build": "tsc --declaration",
         "lint": "eslint --fix '**/*.ts'",
         "test": "jest --colors"
     },
