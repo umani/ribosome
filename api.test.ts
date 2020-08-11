@@ -28,7 +28,7 @@ test("Simple template", () => {
   "operation": "PutItem",
   "key": {
     "pk": \${var0},
-    "sk": \${ctx."args"."arg"}
+    "sk": \${ctx.args.arg}
   }
 }`)
 })
@@ -68,15 +68,15 @@ test("Documentation template", () => {
     })
 
     expect(t).toBe(`#set($var0 = {
-  "id": \${ctx."args"."id"}
+  "id": \${ctx.args.id}
   "meta": "stuff"
-  "upperMeta": \${ctx."args"."meta".toUpperCase()}
+  "upperMeta": \${ctx.args.meta.toUpperCase()}
 })
 #set($var1 = { })
 $!{var1.put("id","first value")}
-#set($var0."myProperty" = "ABC")
-#set($var0."arrProperty" = ["Write","Some","GraphQL"])
-#set($var0."jsonProperty" = {
+#set($var0.myProperty = "ABC")
+#set($var0.arrProperty = ["Write","Some","GraphQL"])
+#set($var0.jsonProperty = {
   "AppSync": "Offline and Realtime"
   "Cognito": "AuthN and AuthZ"
 })

@@ -35,7 +35,7 @@ export abstract class Reference extends MappingTemplate {
     }
 
     public access(k: string): VariableOrProperty {
-        const p = new VariableOrProperty(this.builder, `${this.name}.${this.builder.literal(k)}`)
+        const p = new VariableOrProperty(this.builder, `${this.name}.${k}`)
         if (this._quiet) {
             p.quiet()
         }
