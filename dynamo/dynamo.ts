@@ -1,4 +1,4 @@
-import { MappingTemplate } from "../mapping-template"
+import { MappingTemplate, MappingTemplateVersion } from "../mapping-template"
 import { TemplateBuilder } from "../builder"
 import { Reference } from "../vtl/reference"
 import { ConditionExpression } from "./dynamo-conditions"
@@ -16,12 +16,6 @@ export interface AttributeValues {
     }
 }
 
-export interface PutItemProps {
-    key: PrimaryKey
-    attributes?: AttributeValues
-    cond?: ConditionExpression
-}
-
 function renderKey(i: number, pk: PrimaryKey): string {
     return [
         indent(i, `"key": {`),
@@ -32,8 +26,41 @@ function renderKey(i: number, pk: PrimaryKey): string {
     ].join("\n")
 }
 
+export interface PutItemProps {
+    key: PrimaryKey
+    attributes?: AttributeValues
+    cond?: ConditionExpression
+}
+
+export interface GetItemProps {
+    key: PrimaryKey
+}
+
 export class DynamoDbRequestUtils {
     public constructor(readonly builder: TemplateBuilder) {}
+
+    private operation(
+        op: string,
+        key: PrimaryKey,
+        lines: (version: MappingTemplateVersion, indentation: number) => string[],
+    ): void {
+        this.builder.appendTemplate(
+            MappingTemplate.from((v, i) => {
+                return [
+                    indent(i, "{"),
+                    [
+                        indent(i + 2, `"version": ${JSON.stringify(v)}`),
+                        indent(i + 2, `"operation": "${op}"`),
+                        renderKey(i + 2, key),
+                        ...lines(v, i),
+                    ]
+                        .filter(s => s.length > 0)
+                        .join(",\n"),
+                    indent(i, "}"),
+                ].join("\n")
+            }),
+        )
+    }
 
     public putItem(props: PutItemProps): void {
         const values = this.builder.map()
@@ -43,27 +70,15 @@ export class DynamoDbRequestUtils {
             }
             Object.entries(props.attributes.values).forEach(([k, v]) => values.put(k, v))
         }
-        this.builder.appendTemplate(
-            MappingTemplate.from((v, i) => {
-                return [
-                    indent(i, "{"),
-                    [
-                        indent(i + 2, `"version": ${JSON.stringify(v)}`),
-                        indent(i + 2, `"operation": "PutItem"`),
-                        renderKey(i + 2, props.key),
-                        props.attributes
-                            ? indent(
-                                  i + 2,
-                                  `"attributeValues": $util.dynamodb.toMapValuesJson(${values.renderTemplate(v, 0)})`,
-                              )
-                            : "",
-                        props.cond ? props.cond.renderTemplate(v, i + 2) : "",
-                    ]
-                        .filter(s => s.length > 0)
-                        .join(",\n"),
-                    indent(i, "}"),
-                ].join("\n")
-            }),
-        )
+        this.operation("PutItem", props.key, (v, i) => [
+            props.attributes
+                ? indent(i + 2, `"attributeValues": $util.dynamodb.toMapValuesJson(${values.renderTemplate(v, 0)})`)
+                : "",
+            props.cond ? props.cond.renderTemplate(v, i + 2) : "",
+        ])
+    }
+
+    public getItem(props: GetItemProps): void {
+        this.operation("GetItem", props.key, () => [])
     }
 }

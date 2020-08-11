@@ -91,3 +91,46 @@ $!{var0.put("substring",\${var5})}
   $!{var0.put(\${var6},"\${var6}foo")}
 #end`)
 })
+
+test("DynamoDB templates", () => {
+    const put = Api.requestTemplate(r => {
+        r.dynamoDb.putItem({
+            key: {
+                pk: r.literal("id"),
+                sk: r.ctx.arg("sk"),
+            },
+            attributes: {
+                values: {
+                    attr: r.literal(1),
+                },
+            },
+        })
+    })
+    expect(put).toBe(`\${var0.put("attr",1)}
+{
+  "version": "2017-02-28",
+  "operation": "PutItem",
+  "key": {
+    "pk": "id",
+    "sk": \${ctx.args.sk}
+  },
+  "attributeValues": $util.dynamodb.toMapValuesJson(\${var0})
+}`)
+
+    const get = Api.requestTemplate(r => {
+        r.dynamoDb.getItem({
+            key: {
+                pk: r.literal("id"),
+                sk: r.ctx.arg("sk"),
+            },
+        })
+    })
+    expect(get).toBe(`{
+  "version": "2017-02-28",
+  "operation": "GetItem",
+  "key": {
+    "pk": "id",
+    "sk": \${ctx.args.sk}
+  }
+}`)
+})
