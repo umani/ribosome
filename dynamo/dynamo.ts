@@ -1,29 +1,19 @@
-import { MappingTemplate, MappingTemplateVersion } from "../mapping-template"
+import { MappingTemplateVersion } from "../mapping-template"
 import { TemplateBuilder } from "../builder"
-import { Reference } from "../vtl/reference"
-import { ConditionExpression } from "./dynamo-conditions"
-import { indent } from "../indent"
+import { Reference, Expression, Method } from "../vtl/reference"
+import { ConditionExpression, Query } from "./dynamo-conditions"
+import { DynamoDBUtils } from "../appsync/dynamodb-utils"
 
 export interface PrimaryKey {
-    readonly [k: string]: Reference
+    readonly [k: string]: Expression
 }
 
 export interface AttributeValues {
     // Must be a map. Again, hard to verify types.
     readonly projecting?: Reference
     readonly values: {
-        readonly [k: string]: Reference
+        readonly [k: string]: Expression
     }
-}
-
-function renderKey(i: number, pk: PrimaryKey): string {
-    return [
-        indent(i, `"key": {`),
-        Object.entries(pk)
-            .map(([k, v]) => indent(i + 2, `"${k}": ${v}`))
-            .join(",\n"),
-        indent(i, "}"),
-    ].join("\n")
 }
 
 export interface PutItemProps {
@@ -36,49 +26,115 @@ export interface GetItemProps {
     key: PrimaryKey
 }
 
+export interface DeleteItemProps {
+    key: PrimaryKey
+    cond?: ConditionExpression
+}
+
+export interface TransactWriteItemProps {
+    tableName: string
+    key: PrimaryKey
+    returnValuesOnConditionCheckFailure?: boolean
+    cond?: ConditionExpression
+}
+
+export interface TransactPutItemProps extends TransactWriteItemProps {
+    attributes?: AttributeValues
+}
+
+export interface TransactWriteItems {
+    readonly puts?: TransactPutItemProps[]
+    readonly deletes?: TransactWriteItemProps[]
+}
+
 export class DynamoDbRequestUtils {
     public constructor(readonly builder: TemplateBuilder) {}
 
-    private operation(
-        op: string,
-        key: PrimaryKey,
-        lines: (version: MappingTemplateVersion, indentation: number) => string[],
-    ): void {
-        this.builder.appendTemplate(
-            MappingTemplate.from((v, i) => {
-                return [
-                    indent(i, "{"),
-                    [
-                        indent(i + 2, `"version": ${JSON.stringify(v)}`),
-                        indent(i + 2, `"operation": "${op}"`),
-                        renderKey(i + 2, key),
-                        ...lines(v, i),
-                    ]
-                        .filter(s => s.length > 0)
-                        .join(",\n"),
-                    indent(i, "}"),
-                ].join("\n")
-            }),
-        )
+    private keyToDynamoJson(pk: PrimaryKey): PrimaryKey {
+        return Object.entries(pk).reduce((acc, [k, v]) => {
+            if (!(v instanceof Method) || !v.name.includes("util.dynamodb")) {
+                v = new DynamoDBUtils(this.builder).toDynamoDBJson(v)
+            }
+            return { ...acc, [k]: v }
+        }, {} as PrimaryKey)
+    }
+
+    private prepareAttributes(attrs?: AttributeValues): Reference | undefined {
+        if (!attrs) {
+            return undefined
+        }
+        const values = this.builder.map(attrs.projecting)
+        Object.entries(attrs.values).forEach(([k, v]) => values?.put(k, v.consume()))
+        return new DynamoDBUtils(this.builder).toMapValuesJson(values)
     }
 
     public putItem(props: PutItemProps): void {
-        const values = this.builder.map()
-        if (props.attributes) {
-            if (props.attributes.projecting) {
-                values.assign(props.attributes.projecting)
-            }
-            Object.entries(props.attributes.values).forEach(([k, v]) => values.put(k, v))
-        }
-        this.operation("PutItem", props.key, (v, i) => [
-            props.attributes
-                ? indent(i + 2, `"attributeValues": $util.dynamodb.toMapValuesJson(${values.renderTemplate(v, 0)})`)
-                : "",
-            props.cond ? props.cond.renderTemplate(v, i + 2) : "",
-        ])
+        const values = this.prepareAttributes(props.attributes)
+        this.builder.literal({
+            operation: "PutItem",
+            version: MappingTemplateVersion.V1,
+            key: this.keyToDynamoJson(props.key),
+            ...(values ? { attributeValues: values } : {}),
+            ...(props.cond ? { condition: props.cond.resolve(this.builder) } : {}),
+        })
     }
 
     public getItem(props: GetItemProps): void {
-        this.operation("GetItem", props.key, () => [])
+        this.builder.literal({
+            operation: "GetItem",
+            version: MappingTemplateVersion.V1,
+            key: this.keyToDynamoJson(props.key),
+        })
+    }
+
+    public deleteItem(props: DeleteItemProps): void {
+        this.builder.literal({
+            operation: "DeleteItem",
+            version: MappingTemplateVersion.V1,
+            key: this.keyToDynamoJson(props.key),
+            ...(props.cond ? { condition: props.cond.resolve(this.builder) } : {}),
+        })
+    }
+
+    public query(q: Query): void {
+        this.builder.literal({
+            operation: "Query",
+            version: MappingTemplateVersion.V1,
+            query: q.resolve(this.builder),
+        })
+    }
+
+    public transactWrite(tx: TransactWriteItems): void {
+        const common = (item: TransactWriteItemProps): Record<string, unknown> => ({
+            table: item.tableName,
+            key: this.keyToDynamoJson(item.key),
+            ...(item.cond
+                ? {
+                      condition: {
+                          returnValuesOnConditionCheckFailure: item.returnValuesOnConditionCheckFailure,
+                          ...item.cond.resolve(this.builder),
+                      },
+                  }
+                : {}),
+        })
+        const puts = (tx.puts || []).map(p => {
+            const values = this.prepareAttributes(p.attributes)
+            return this.builder.literal({
+                ...common(p),
+                operation: "PutItem",
+                attributeValues: values,
+            })
+        })
+        const deletes = (tx.deletes || []).map(d =>
+            this.builder.literal({
+                ...common(d),
+                operation: "DeleteItem",
+            }),
+        )
+        this.builder.literal({
+            version: MappingTemplateVersion.V2,
+            operation: "TransactWriteItems",
+            transactItems: [...puts, ...deletes],
+        })
     }
 }

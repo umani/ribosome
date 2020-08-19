@@ -1,8 +1,19 @@
-import { MappingTemplate, MappingTemplateVersion } from "../mapping-template"
+import { MappingTemplate } from "../mapping-template"
 import { TemplateBuilder } from "../builder"
 import { indent } from "../indent"
 
 // Reference: https://velocity.apache.org/engine/1.7/user-guide.html#set
+// Note: We consider VTL 1.7, which is linked from AppSync documentation.
+//       Indeed, AppSync doesn't seem to support newer features.
+
+// Expressions are references, literals, relational expressions and arithmetic expressions.
+// A reference is a VTL entity that represents some data within a context. References can
+// be variables, method calls, or properties.
+// A directive denotes an actions: #if, #foreach and #set. They all take Expressions, with the
+// left-hand side of #set being a Reference.
+
+// Note: type-safety has limits here. For example, to make it easier to write
+// literals (e.g., 5, "str", etc.), we represent expressions as "unknown".
 
 // TODO: Validate VTL identifiers follow the rules:
 // must start with an alphabetic character (a .. z or A .. Z).
@@ -11,14 +22,17 @@ import { indent } from "../indent"
 // hyphen ("-")
 // underscore ("_")
 
-// References can be variables, method calls, or properties.
-// To make it easier to write literals (e.g., 5, "str", etc.),
-// we represent references as "unknown".
-export abstract class Reference extends MappingTemplate {
+export abstract class Expression extends MappingTemplate {
     protected _quiet = false
 
     public constructor(protected readonly builder: TemplateBuilder, protected readonly name: string) {
         super()
+        this.builder.appendTemplate(this)
+    }
+
+    public consume(): this {
+        this.builder.consume(this)
+        return this
     }
 
     public quiet(): this {
@@ -26,7 +40,130 @@ export abstract class Reference extends MappingTemplate {
         return this
     }
 
-    public invoke(method: string, ...args: unknown[]): Method {
+    public not(): Expression {
+        return new UnaryExpression(this.builder, "!", this)
+    }
+
+    public eq(other: unknown): Expression {
+        return this.binOp(other, "==")
+    }
+
+    public ne(other: unknown): Expression {
+        return this.binOp(other, "!=")
+    }
+
+    public and(other: unknown): Expression {
+        return this.binOp(other, "&&")
+    }
+
+    public or(other: unknown): Expression {
+        return this.binOp(other, "||")
+    }
+
+    public gt(other: unknown): Expression {
+        return this.binOp(other, ">")
+    }
+
+    public ge(other: unknown): Expression {
+        return this.binOp(other, ">=")
+    }
+
+    public lt(other: unknown): Expression {
+        return this.binOp(other, "<")
+    }
+
+    public le(other: unknown): Expression {
+        return this.binOp(other, "<=")
+    }
+
+    public add(other: unknown): Expression {
+        return this.binOp(other, "+")
+    }
+
+    public sub(other: unknown): Expression {
+        return this.binOp(other, "-")
+    }
+
+    public mul(other: unknown): Expression {
+        return this.binOp(other, "*")
+    }
+
+    public div(other: unknown): Expression {
+        return this.binOp(other, "/")
+    }
+
+    public rem(other: unknown): Expression {
+        return this.binOp(other, "%")
+    }
+
+    public to(other: unknown): Expression {
+        return this.binOp(other, "..", false)
+    }
+
+    private binOp(other: unknown, op: string, parens = true): Expression {
+        return new BinaryExpression(this.builder, op, this, this.builder.literal(other), parens)
+    }
+
+    public toString(): string {
+        this.consume()
+        return this.renderTemplate(0)
+    }
+}
+
+export class UnaryExpression extends Expression {
+    constructor(builder: TemplateBuilder, private readonly op: string, private readonly ref: Expression) {
+        super(builder, "")
+        ref.consume()
+    }
+
+    public renderTemplate(i: number): string {
+        return indent(i, `${this.op}${this.ref.renderTemplate(i)}`)
+    }
+}
+
+export class BinaryExpression extends Expression {
+    constructor(
+        builder: TemplateBuilder,
+        private readonly op: string,
+        private readonly exp1: Expression,
+        private readonly exp2: Expression,
+        private readonly parens: boolean = true,
+    ) {
+        super(builder, "")
+        exp1.consume()
+        exp2.consume()
+    }
+
+    public renderTemplate(i: number): string {
+        return indent(
+            i,
+            `${this.parens ? "(" : ""}${this.exp1.renderTemplate(0)} ${this.op} ${this.exp2.renderTemplate(0)}${
+                this.parens ? ")" : ""
+            }`,
+        )
+    }
+}
+
+export class Reference extends Expression {
+    public constructor(builder: TemplateBuilder, public name: string) {
+        super(builder, name)
+    }
+
+    public assign(value: unknown): void {
+        this.consume()
+        const l = this.builder.literal(value).consume()
+        this.builder.appendTemplate(
+            MappingTemplate.from(i => indent(i, `#set($${this.name} = ${l.renderTemplate(0)})`)),
+        )
+    }
+
+    public invoke(method: string, ...args: unknown[]): Reference {
+        this.consume()
+        for (const a of args) {
+            if (a instanceof BinaryExpression || a instanceof UnaryExpression) {
+                throw new Error("Version 1.7 of VTL doesn't allow non-reference expressions as arguments")
+            }
+        }
         const m = new Method(this.builder, this.name, method, args)
         if (this._quiet) {
             m.quiet()
@@ -34,203 +171,125 @@ export abstract class Reference extends MappingTemplate {
         return m
     }
 
-    public access(k: string): VariableOrProperty {
-        const p = new VariableOrProperty(this.builder, `${this.name}.${k}`)
+    // Access models property accesses of the form $ref.prop
+    public access(k: string): Reference {
+        this.consume()
+        const p = new Reference(this.builder, `${this.name}.${k}`)
         if (this._quiet) {
             p.quiet()
         }
         return p
     }
 
-    // Operators
-
-    public not(): Reference {
-        return new UnaryConditionReference(this.builder, "!", this)
+    public index(idx: unknown): Reference {
+        this.consume()
+        return new IndexReference(this.builder, this.name, idx)
     }
 
-    public eq(other: unknown): Reference {
-        return this.binOp(other, "==")
+    // Like access(), but asserts that the returned reference if a Map.
+    public accessMap(k: string): MapReference {
+        this.consume()
+        const p = new MapReference(this.builder, `${this.name}.${k}`)
+        if (this._quiet) {
+            p.quiet()
+        }
+        return p
     }
 
-    public ne(other: unknown): Reference {
-        return this.binOp(other, "!=")
-    }
-
-    public and(other: unknown): Reference {
-        return this.binOp(other, "&&")
-    }
-
-    public or(other: unknown): Reference {
-        return this.binOp(other, "||")
-    }
-
-    public gt(other: unknown): Reference {
-        return this.binOp(other, ">")
-    }
-
-    public ge(other: unknown): Reference {
-        return this.binOp(other, ">=")
-    }
-
-    public lt(other: unknown): Reference {
-        return this.binOp(other, "<")
-    }
-
-    public le(other: unknown): Reference {
-        return this.binOp(other, "<=")
-    }
-
-    public add(other: unknown): Reference {
-        return this.binOp(other, "+")
-    }
-
-    public sub(other: unknown): Reference {
-        return this.binOp(other, "-")
-    }
-
-    public mul(other: unknown): Reference {
-        return this.binOp(other, "*")
-    }
-
-    public div(other: unknown): Reference {
-        return this.binOp(other, "/")
-    }
-
-    public rem(other: unknown): Reference {
-        return this.binOp(other, "%")
-    }
-
-    public to(other: unknown): Reference {
-        return this.binOp(other, "..", false)
-    }
-
-    private binOp(other: unknown, op: string, parens = true): Reference {
-        return new BinaryConditionReference(this.builder, op, this, this.builder.literal(other), parens)
-    }
-
-    public toString(): string {
-        return this.renderTemplate(MappingTemplateVersion.V1, 0)
-    }
-}
-
-// It's not super-pure to say conditions are references,
-// but this is the easiest way to have a binary condition
-// work on the result of some other condition or on a reference.
-export class UnaryConditionReference extends Reference {
-    constructor(builder: TemplateBuilder, private readonly op: string, private readonly ref: Reference) {
-        super(builder, "")
-    }
-
-    public renderTemplate(v: MappingTemplateVersion, i: number): string {
-        return indent(i, `${this.op}${this.ref.renderTemplate(v, i)}`)
-    }
-}
-
-export class BinaryConditionReference extends Reference {
-    constructor(
-        builder: TemplateBuilder,
-        private readonly op: string,
-        private readonly ref1: Reference,
-        private readonly ref2: Reference,
-        private readonly parens: boolean = true,
-    ) {
-        super(builder, "")
-    }
-
-    public renderTemplate(v: MappingTemplateVersion, i: number): string {
-        return indent(
-            i,
-            `${this.parens ? "(" : ""}${this.ref1.renderTemplate(v, 0)} ${this.op} ${this.ref2.renderTemplate(v, 0)}${
-                this.parens ? ")" : ""
-            }`,
-        )
-    }
-}
-
-export class VariableOrProperty extends Reference {
-    public constructor(builder: TemplateBuilder, name: string) {
-        super(builder, name)
-    }
-
-    public assign(value: unknown): void {
-        this.builder.appendTemplate(
-            MappingTemplate.from((v, i) =>
-                indent(i, `#set($${this.name} = ${this.builder.literal(value).renderTemplate(v, 0)})`),
-            ),
-        )
-    }
-
-    public renderTemplate(_: MappingTemplateVersion, i: number): string {
+    public renderTemplate(i: number): string {
         const prefix = this._quiet ? "$!{" : "${"
         return indent(i, `${prefix}${this.name}}`)
     }
 }
 
-export class MapVariableOrProperty extends VariableOrProperty {
+export class IndexReference extends Reference {
+    public constructor(builder: TemplateBuilder, name: string, private readonly idx: unknown) {
+        super(builder, name)
+        consume(idx)
+    }
+
+    public renderTemplate(i: number): string {
+        const prefix = this._quiet ? "$!{" : "${"
+        return indent(i, `${prefix}${this.name}[${stringify(this.idx, 0)}]}`)
+    }
+}
+
+export class MapReference extends Reference {
     public constructor(builder: TemplateBuilder, name: string) {
         super(builder, name)
     }
 
-    public get(k: string): VariableOrProperty {
-        return this.access(k)
+    public get(k: unknown): Reference {
+        return this.invoke("get", k)
     }
 
     public put(k: unknown, v: unknown): void {
-        this.invoke("put", this.builder.literal(k), this.builder.literal(v)).consume()
+        this.invoke("put", this.builder.literal(k), this.builder.literal(v))
+    }
+
+    public entrySet(): Reference {
+        return this.invoke("entrySet")
     }
 }
 
+// TODO: Array reference with index method
+
 export class Method extends Reference {
-    public constructor(
-        builder: TemplateBuilder,
-        target: string,
-        private readonly method: string,
-        private readonly args: unknown[],
-    ) {
+    private readonly args: Literal[]
+
+    public constructor(builder: TemplateBuilder, target: string, public readonly method: string, args: unknown[]) {
         super(builder, target)
+        this.args = args.map(a => new Literal(this.builder, a).consume())
     }
 
-    // Called when the method is just being called for side effects.
-    public consume(): void {
-        this.builder.appendTemplate(this)
-    }
-
-    public renderTemplate(v: MappingTemplateVersion, i: number): string {
+    public renderTemplate(i: number): string {
         const prefix = this._quiet ? "$!" : "$"
         return indent(
             i,
-            `${prefix}{${this.name}.${this.method}(${this.args
-                .map(r => new Literal(this.builder, r).renderTemplate(v, 0))
-                .join(",")})}`,
+            `${prefix}{${this.name}.${this.method}(${this.args.map(a => a.renderTemplate(0)).join(", ")})}`,
         )
     }
 }
 
-function stringify(v: unknown): string {
-    if (v instanceof Reference) {
+function consume(v: unknown): void {
+    if (v instanceof Expression) {
+        v.consume()
+    } else if (v instanceof Array) {
+        v.forEach(consume)
+    } else if (v instanceof Object) {
+        Object.values(v).map(consume)
+    }
+}
+
+function stringify(v: unknown, i: number): string {
+    if (v === undefined) {
+        return ""
+    }
+    if (v instanceof Expression) {
         return v.toString()
-    }
-    if (v instanceof Array) {
-        return "[" + (v as Array<unknown>).map(stringify).toString() + "]"
-    }
-    if (v instanceof Object) {
-        const contents = Object.entries(v)
-            .map(([k, v]) => `  "${k}": ${stringify(v)}`)
-            .join("\n")
-        return contents.length > 0 ? `{\n${contents}\n}` : "{ }"
     }
     if (typeof v === "string" || typeof v === "boolean" || typeof v === "number") {
         return JSON.stringify(v)
+    }
+    if (v instanceof Array) {
+        return "[" + (v as Array<unknown>).map(e => stringify(e, 0)).join(", ") + "]"
+    }
+    if (v instanceof Object) {
+        const contents = Object.entries(v)
+            .map(([k, v]) => indent(i + 2, `"${k}": ${stringify(v, i + 2)}`))
+            .join(",\n")
+        return contents.length > 0 ? ["{", contents, indent(i, "}")].join("\n") : "{ }"
     }
     throw new Error(`Variable ${v} is of unsupported type`)
 }
 
 export class Literal extends Reference {
-    public constructor(builder: TemplateBuilder, value: unknown) {
-        super(builder, stringify(value))
+    public constructor(builder: TemplateBuilder, private readonly value: unknown) {
+        super(builder, stringify(value, 0))
+        consume(value)
     }
 
-    public renderTemplate(_: MappingTemplateVersion, i: number): string {
-        return indent(i, this.name)
+    public renderTemplate(i: number): string {
+        return indent(i, stringify(this.value, i))
     }
 }

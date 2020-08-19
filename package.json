@@ -12,6 +12,7 @@
     "scripts": {
         "build": "tsc",
         "lint": "eslint --fix '**/*.ts'",
+        "blah": "echo $@ | xargs -I % echo %",
         "test": "jest --colors"
     },
     "devDependencies": {

@@ -12,17 +12,17 @@ export class Api {
         f: (r: RequestTemplate) => void,
         v: MappingTemplateVersion = Api.globalVersion,
     ): string {
-        const r = new RequestTemplate()
+        const r = new RequestTemplate(v)
         f(r)
-        return r.renderTemplate(v, 0)
+        return r.renderTemplate(0)
     }
 
     public static responseTemplate(
         f: (r: ResponseTemplate) => void,
         v: MappingTemplateVersion = Api.globalVersion,
     ): string {
-        const r = new ResponseTemplate()
+        const r = new ResponseTemplate(v)
         f(r)
-        return r.renderTemplate(v, 0)
+        return r.renderTemplate(0)
     }
 }

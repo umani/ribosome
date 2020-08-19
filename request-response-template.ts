@@ -10,6 +10,14 @@ export abstract class RequestResponseTemplate extends TemplateBuilder {
 export class RequestTemplate extends RequestResponseTemplate {
     readonly dynamoDb = new DynamoDbRequestUtils(this)
     readonly ctx = new Context(this)
+
+    public invoke(payload: unknown): void {
+        this.literal({
+            version: this.version,
+            operation: "Invoke",
+            payload,
+        })
+    }
 }
 
 export class ResponseTemplate extends RequestResponseTemplate {

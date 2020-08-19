@@ -1,24 +1,29 @@
 import { Identity } from "./identity"
 import { TemplateBuilder } from "../builder"
-import { Reference, MapVariableOrProperty, VariableOrProperty } from "../vtl/reference"
+import { Reference, MapReference } from "../vtl/reference"
+import { ErrorResult } from "./error"
 
 export class Context {
-    private readonly ctx: Reference
+    protected readonly ctx: Reference
+
     public constructor(protected readonly builder: TemplateBuilder) {
-        this.ctx = new VariableOrProperty(this.builder, "ctx")
+        this.ctx = new Reference(this.builder, "ctx").consume()
     }
 
-    public readonly identity = new Identity(this.builder)
+    public get identity(): Identity {
+        return new Identity(this.builder, this.ctx.access("identity"))
+    }
 
-    public readonly stash = new MapVariableOrProperty(this.builder, "$ctx.stash")
-
-    //TODO: Maybe introduce a ReadOnlyMap for consistency?
-    public args(): Reference {
-        return this.ctx.access("args")
+    public get args(): MapReference {
+        return this.ctx.accessMap("args")
     }
 
     public arg(arg: string): Reference {
-        return this.args().access(arg)
+        return this.args.access(arg)
+    }
+
+    public get stash(): MapReference {
+        return this.ctx.accessMap("stash")
     }
 
     public source(arg: string): Reference {
@@ -31,7 +36,15 @@ export class Context {
 }
 
 export class ResultContext extends Context {
+    public get results(): Reference {
+        return this.ctx.accessMap("result")
+    }
+
+    public get error(): ErrorResult {
+        return new ErrorResult(this.builder, this.ctx.access("error"))
+    }
+
     public result(arg: string): Reference {
-        return this.builder.literal(`$ctx.result.${arg}`)
+        return this.results.access(arg)
     }
 }

@@ -1,47 +1,45 @@
-import { Reference } from "../vtl/reference"
-import { MappingTemplate, MappingTemplateVersion } from "../mapping-template"
-import { indent } from "../indent"
+import { Expression } from "../vtl/reference"
+import { TemplateBuilder } from "../builder"
+import { DynamoDBUtils } from "../appsync/dynamodb-utils"
 
-abstract class AttributeAliasGenerator {
-    protected readonly dedup: Record<string, string> = {}
-
-    public length(): number {
-        return Object.keys(this.dedup).length
-    }
-
-    public translation(): string {
-        return Object.entries(this.dedup)
-            .sort((e1, e2) => e1[1].localeCompare(e2[1]))
-            .map(e => `"${e[1]}": ${e[0]}`)
-            .join(",")
-    }
+export interface ResolvedCondition {
+    readonly expression: string
+    readonly expressionNames?: Record<string, string>
+    readonly expressionValues?: Record<string, Expression>
 }
 
-class AttributeValueAliasGenerator extends AttributeAliasGenerator {
+class ExpressionValuesAliasGenerator {
+    public readonly result: Record<string, Expression> = {}
+    private readonly dedup: Record<string, string> = {}
     private generator = 0
 
-    public aliasFor(attributeValue: string): string {
-        const actualValue = `$util.dynamodb.toDynamoDBJson(${attributeValue})`
-        let alias = this.dedup[actualValue]
+    constructor(protected readonly builder: TemplateBuilder) {}
+
+    public aliasFor(attributeValue: Expression): string {
+        const attrStr = attributeValue.toString()
+        let alias = this.dedup[attrStr]
         if (alias === undefined) {
             alias = `:arg${this.generator++}`
-            this.dedup[actualValue] = alias
+            this.dedup[attrStr] = alias
+            this.result[alias] = new DynamoDBUtils(this.builder).toDynamoDBJson(attributeValue)
         }
         return alias
     }
 }
 
-class AttributeNameAliasGenerator extends AttributeAliasGenerator {
-    public aliasFor(attributeValue: string): string {
-        const attr = `#${attributeValue}`
-        this.dedup[`"${attributeValue}"`] = attr
+class ExpressionNamesAliasGenerator {
+    public readonly result: Record<string, string> = {}
+
+    public aliasFor(attributeName: string): string {
+        const attr = `#${attributeName}`
+        this.result[attr] = attributeName
         return attr
     }
 }
 
 interface OperandCollector {
-    readonly attributeNames: AttributeNameAliasGenerator
-    readonly attributeValues: AttributeValueAliasGenerator
+    readonly expressionNames: ExpressionNamesAliasGenerator
+    readonly attributeValues: ExpressionValuesAliasGenerator
 }
 
 /**
@@ -51,42 +49,31 @@ export interface IOperand {
     /**
      * @internal
      */
-    _render(collector: OperandCollector, v: MappingTemplateVersion): string
+    _resolve(collector: OperandCollector): string
+}
+
+export interface Condition {
+    expression: string
 }
 
 /**
  * Utility class to represent DynamoDB conditions.
  */
 abstract class BaseCondition {
-    public renderTemplate(v: MappingTemplateVersion, i: number): string {
+    public resolve(builder: TemplateBuilder): ResolvedCondition {
         const collector: OperandCollector = {
-            attributeNames: new AttributeNameAliasGenerator(),
-            attributeValues: new AttributeValueAliasGenerator(),
+            expressionNames: new ExpressionNamesAliasGenerator(),
+            attributeValues: new ExpressionValuesAliasGenerator(builder),
         }
-        const condition = this.renderCondition(collector, v)
-        const template = [indent(i, `"expression": "${condition}"`)]
-        if (collector.attributeNames.length() > 0) {
-            template.push(
-                [
-                    indent(i, `"expressionNames": {"`),
-                    indent(i + 2, collector.attributeNames.translation()),
-                    indent(i, "}"),
-                ].join("\n"),
-            )
+        const condition = this.resolveCondition(collector)
+        return {
+            expression: condition,
+            expressionNames: collector.expressionNames.result,
+            expressionValues: collector.attributeValues.result,
         }
-        if (collector.attributeValues.length() > 0) {
-            template.push(
-                [
-                    indent(i, `"expressionNames": {"`),
-                    indent(i + 2, collector.attributeValues.translation()),
-                    indent(i, "}"),
-                ].join("\n"),
-            )
-        }
-        return template.join(",\n")
     }
 
-    public abstract renderCondition(collector: OperandCollector, v: MappingTemplateVersion): string
+    public abstract resolveCondition(collector: OperandCollector): string
 }
 
 /**
@@ -96,20 +83,22 @@ abstract class FunctionCondition extends BaseCondition implements IOperand {
     /**
      * @internal
      */
-    public _render(collector: OperandCollector, v: MappingTemplateVersion): string {
-        return this.renderCondition(collector, v)
+    public _resolve(collector: OperandCollector): string {
+        return this.resolveCondition(collector)
     }
 }
 
 /**
- * Operand from VTL references. This bridges the template
+ * Operand from VTL Expressions. This bridges the template
  * world with the DynamoDB world.
  */
-class ReferenceOperand implements IOperand {
-    public constructor(private readonly arg: Reference) {}
+class ExpressionOperand implements IOperand {
+    public constructor(private readonly arg: Expression) {
+        arg.consume()
+    }
 
-    public _render(collector: OperandCollector, v: MappingTemplateVersion): string {
-        return collector.attributeValues.aliasFor(this.arg.renderTemplate(v, 0))
+    public _resolve(collector: OperandCollector): string {
+        return collector.attributeValues.aliasFor(this.arg)
     }
 }
 
@@ -119,8 +108,8 @@ class ReferenceOperand implements IOperand {
 class AttributeOperand implements IOperand {
     constructor(private readonly arg: string) {}
 
-    public _render(collector: OperandCollector, _: MappingTemplateVersion): string {
-        return collector.attributeNames.aliasFor(this.arg)
+    public _resolve(collector: OperandCollector): string {
+        return collector.expressionNames.aliasFor(this.arg)
     }
 }
 
@@ -132,8 +121,8 @@ class AttributeFunction extends FunctionCondition {
         super()
     }
 
-    public renderCondition(collector: OperandCollector, v: MappingTemplateVersion): string {
-        return `${this.func}(${this.attr._render(collector, v)})`
+    public resolveCondition(collector: OperandCollector): string {
+        return `${this.func}(${this.attr._resolve(collector)})`
     }
 }
 
@@ -149,8 +138,8 @@ class AttributeValueFunction extends BaseCondition {
         super()
     }
 
-    public renderCondition(collector: OperandCollector, v: MappingTemplateVersion): string {
-        return `${this.func}(${this.attr._render(collector, v)}, ${this.arg._render(collector, v)})`
+    public resolveCondition(collector: OperandCollector): string {
+        return `${this.func}(${this.attr._resolve(collector)}, ${this.arg._resolve(collector)})`
     }
 }
 
@@ -166,11 +155,8 @@ class BinaryCondition extends BaseCondition {
         super()
     }
 
-    public renderCondition(collector: OperandCollector, v: MappingTemplateVersion): string {
-        return `(${this.left.renderCondition(collector, v)}) ${this.operator} (${this.right.renderCondition(
-            collector,
-            v,
-        )})`
+    public resolveCondition(collector: OperandCollector): string {
+        return `(${this.left.resolveCondition(collector)}) ${this.operator} (${this.right.resolveCondition(collector)})`
     }
 }
 
@@ -200,8 +186,8 @@ class Not extends BaseCondition {
         super()
     }
 
-    public renderCondition(collector: OperandCollector, v: MappingTemplateVersion): string {
-        return `NOT (${this.cond.renderCondition(collector, v)})`
+    public resolveCondition(collector: OperandCollector): string {
+        return `NOT (${this.cond.resolveCondition(collector)})`
     }
 }
 
@@ -213,8 +199,8 @@ class ComparatorCondition extends BaseCondition {
         super()
     }
 
-    public renderCondition(collector: OperandCollector, v: MappingTemplateVersion): string {
-        return `${this.attr._render(collector, v)} ${this.op} ${this.arg._render(collector, v)}`
+    public resolveCondition(collector: OperandCollector): string {
+        return `${this.attr._resolve(collector)} ${this.op} ${this.arg._resolve(collector)}`
     }
 }
 
@@ -230,10 +216,9 @@ class Between extends BaseCondition {
         super()
     }
 
-    public renderCondition(collector: OperandCollector, v: MappingTemplateVersion): string {
-        return `${this.attr._render(collector, v)} BETWEEN ${this.arg1._render(collector, v)} AND ${this.arg2._render(
+    public resolveCondition(collector: OperandCollector): string {
+        return `${this.attr._resolve(collector)} BETWEEN ${this.arg1._resolve(collector)} AND ${this.arg2._resolve(
             collector,
-            v,
         )}`
     }
 }
@@ -246,8 +231,8 @@ class In extends BaseCondition {
         super()
     }
 
-    public renderCondition(collector: OperandCollector, v: MappingTemplateVersion): string {
-        return `${this.attr._render(collector, v)} IN (${this.choices.map(c => c._render(collector, v)).join(", ")})`
+    public resolveCondition(collector: OperandCollector): string {
+        return `${this.attr._resolve(collector)} IN (${this.choices.map(c => c._resolve(collector)).join(", ")})`
     }
 }
 
@@ -300,7 +285,7 @@ class Contains extends AttributeValueFunction {
  * Utility class to represent DynamoDB "contains" conditions.
  */
 class AttributeType extends AttributeValueFunction {
-    constructor(attr: AttributeOperand, type: ReferenceOperand) {
+    constructor(attr: AttributeOperand, type: ExpressionOperand) {
         super(attr, type, "attribute_type")
     }
 }
@@ -319,8 +304,8 @@ export class Operand {
     /**
      * Returns an operand that's a value, coming from the GraphQL request.
      */
-    public static from(attr: Reference): IOperand {
-        return new ReferenceOperand(attr)
+    public static from(attr: Expression): IOperand {
+        return new ExpressionOperand(attr)
     }
 
     /**
@@ -334,7 +319,79 @@ export class Operand {
 /**
  * Factory class for DynamoDB key conditions.
  */
-export class ConditionExpression extends MappingTemplate {
+export class Query {
+    /**
+     * Condition k = arg, true if the key attribute k is equal to the Query argument
+     */
+    public static eq(keyName: string, arg: Expression): Query {
+        return new Query(new ComparatorCondition(new AttributeOperand(keyName), "=", new ExpressionOperand(arg)))
+    }
+
+    /**
+     * Condition k < arg, true if the key attribute k is less than the Query argument
+     */
+    public static lt(keyName: string, arg: Expression): Query {
+        return new Query(new ComparatorCondition(new AttributeOperand(keyName), "<", new ExpressionOperand(arg)))
+    }
+
+    /**
+     * Condition k <= arg, true if the key attribute k is less than or equal to the Query argument
+     */
+    public static le(keyName: string, arg: Expression): Query {
+        return new Query(new ComparatorCondition(new AttributeOperand(keyName), "<=", new ExpressionOperand(arg)))
+    }
+
+    /**
+     * Condition k > arg, true if the key attribute k is greater than the the Query argument
+     */
+    public static gt(keyName: string, arg: Expression): Query {
+        return new Query(new ComparatorCondition(new AttributeOperand(keyName), ">", new ExpressionOperand(arg)))
+    }
+
+    /**
+     * Condition k >= arg, true if the key attribute k is greater or equal to the Query argument
+     */
+    public static ge(keyName: string, arg: Expression): Query {
+        return new Query(new ComparatorCondition(new AttributeOperand(keyName), ">=", new ExpressionOperand(arg)))
+    }
+
+    /**
+     * Condition (k, arg). True if the key attribute k begins with the Query argument.
+     */
+    public static beginsWith(keyName: string, arg: Expression): Query {
+        return new Query(new BeginsWith(new AttributeOperand(keyName), new ExpressionOperand(arg)))
+    }
+
+    /**
+     * Condition k BETWEEN arg1 AND arg2, true if k >= arg1 and k <= arg2.
+     */
+    public static between(keyName: string, arg1: Expression, arg2: Expression): Query {
+        return new Query(
+            new Between(new AttributeOperand(keyName), new ExpressionOperand(arg1), new ExpressionOperand(arg2)),
+        )
+    }
+
+    private constructor(private readonly cond: BaseCondition) {}
+
+    /**
+     * Conjunction between two conditions.
+     */
+    public and(keyCond: Query): Query {
+        return new Query(new And(this.cond, keyCond.cond))
+    }
+
+    /**
+     * Resolves the condition to an object.
+     */
+    public resolve(builder: TemplateBuilder): ResolvedCondition {
+        return this.cond.resolve(builder)
+    }
+}
+
+/**
+ * Factory class for DynamoDB key conditions.
+ */
+export class ConditionExpression {
     /**
      * Condition `attr = arg`, true if the attribute `attr` is equal to `arg`
      */
@@ -394,8 +451,8 @@ export class ConditionExpression extends MappingTemplate {
     /**
      * True if the specified attribute is of a particular data type.
      */
-    public static attributeType(attr: string, type: Reference): ConditionExpression {
-        return new ConditionExpression(new AttributeType(new AttributeOperand(attr), new ReferenceOperand(type)))
+    public static attributeType(attr: string, type: Expression): ConditionExpression {
+        return new ConditionExpression(new AttributeType(new AttributeOperand(attr), new ExpressionOperand(type)))
     }
 
     /**
@@ -432,9 +489,7 @@ export class ConditionExpression extends MappingTemplate {
         return new ConditionExpression(new In(new AttributeOperand(attr), args))
     }
 
-    private constructor(private readonly cond: BaseCondition) {
-        super()
-    }
+    private constructor(private readonly cond: BaseCondition) {}
 
     /**
      * Conjunction between two conditions.
@@ -458,9 +513,9 @@ export class ConditionExpression extends MappingTemplate {
     }
 
     /**
-     * Renders the key condition to a VTL string.
+     * Resolves the condition to an object.
      */
-    public renderTemplate(v: MappingTemplateVersion, i: number): string {
-        return [indent(i, `"condition": {"`), indent(i + 2, this.cond.renderTemplate(v, i)), indent(i, "}")].join("\n")
+    public resolve(builder: TemplateBuilder): ResolvedCondition {
+        return this.cond.resolve(builder)
     }
 }

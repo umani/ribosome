@@ -1,9 +1,10 @@
 // Implements the helpers in AppSync's $util
 
-import { Reference } from "../vtl/reference"
+import { Expression } from "../vtl/reference"
 import { TemplateBuilder } from "../builder"
 import { MethodWrapper } from "../vtl/method-wrapper"
 import { Time } from "./time"
+import { DynamoDBUtils } from "./dynamodb-utils"
 
 // FIXME: It would be great if we could validate types, but that would require
 // being able to recover them from method calls. Maybe if we assume the type
@@ -17,11 +18,11 @@ export class List {
         this.invoker = new MethodWrapper(builder, "$util.list")
     }
 
-    public copyAndRetainAll(toCopy: Reference, toKeep: Reference): Reference {
+    public copyAndRetainAll(toCopy: Expression, toKeep: Expression): Expression {
         return this.invoker.apply("copyAndRetainAll", toCopy, toKeep)
     }
 
-    public copyAndRecopyAndRemoveAlltainAll(toCopy: Reference, toKeep: Reference): Reference {
+    public copyAndRecopyAndRemoveAlltainAll(toCopy: Expression, toKeep: Expression): Expression {
         return this.invoker.apply("copyAndRemoveAll", toCopy, toKeep)
     }
 }
@@ -33,11 +34,11 @@ export class Map {
         this.invoker = new MethodWrapper(builder, "$util.map")
     }
 
-    public copyAndRetainAllKeys(toCopy: Reference, toKeep: Reference): Reference {
+    public copyAndRetainAllKeys(toCopy: Expression, toKeep: Expression): Expression {
         return this.invoker.apply("copyAndRetainAllKeys", toCopy, toKeep)
     }
 
-    public copyAndRemoveAllKeys(toCopy: Reference, toKeep: Reference): Reference {
+    public copyAndRemoveAllKeys(toCopy: Expression, toKeep: Expression): Expression {
         return this.invoker.apply("copyAndRemoveAllKeys", toCopy, toKeep)
     }
 }
@@ -48,115 +49,117 @@ export class Util {
     public readonly time: Time
     public readonly list: List
     public readonly map: Map
+    public readonly dynamodb: DynamoDBUtils
 
     public constructor(builder: TemplateBuilder) {
-        this.invoker = new MethodWrapper(builder, "$util")
+        this.invoker = new MethodWrapper(builder, "util")
         this.time = new Time(builder)
         this.list = new List(builder)
         this.map = new Map(builder)
+        this.dynamodb = new DynamoDBUtils(builder)
     }
 
-    public appendError(msg: Reference, errorType?: Reference, data?: Reference, errorInfo?: Reference): void {
-        this.invoker.apply("appendError", msg, errorType, data, errorInfo).consume()
+    public appendError(msg: Expression, errorType?: Expression, data?: Expression, errorInfo?: Expression): void {
+        this.invoker.apply("appendError", msg, errorType, data, errorInfo)
     }
 
-    public autoId(): Reference {
+    public autoId(): Expression {
         return this.invoker.apply("autoId")
     }
 
-    public base64Encode(arg: Reference): Reference {
+    public base64Encode(arg: Expression): Expression {
         return this.invoker.apply("base64Encode", arg)
     }
 
-    public base64Decode(arg: Reference): Reference {
+    public base64Decode(arg: Expression): Expression {
         return this.invoker.apply("base64Decode", arg)
     }
 
-    public defaultIfNull(arg: Reference, d: Reference): Reference {
+    public defaultIfNull(arg: Expression, d: Expression): Expression {
         return this.invoker.apply("defaultIfNull", arg, d)
     }
 
-    public defaultIfNullOrEmpty(arg: Reference, d: Reference): Reference {
+    public defaultIfNullOrEmpty(arg: Expression, d: Expression): Expression {
         return this.invoker.apply("defaultIfNullOrEmpty", arg, d)
     }
 
-    public defaultIfNullOrBlank(arg: Reference, d: Reference): Reference {
+    public defaultIfNullOrBlank(arg: Expression, d: Expression): Expression {
         return this.invoker.apply("defaultIfNullOrBlank", arg, d)
     }
 
-    public error(msg: Reference, errorType?: Reference, data?: Reference, errorInfo?: Reference): void {
-        this.invoker.apply("error", msg, errorType, data, errorInfo).consume()
+    public error(msg: Expression, errorType?: Expression, data?: Expression, errorInfo?: Expression): void {
+        this.invoker.apply("error", msg, errorType, data, errorInfo)
     }
 
-    public escapeJavaScript(arg: Reference): Reference {
+    public escapeJavaScript(arg: Expression): Expression {
         return this.invoker.apply("escapeJavaScript", arg)
     }
 
-    public isNull(arg: Reference): Reference {
+    public isNull(arg: Expression): Expression {
         return this.invoker.apply("isNull", arg)
     }
 
-    public isNullOrEmpty(arg: Reference): Reference {
+    public isNullOrEmpty(arg: Expression): Expression {
         return this.invoker.apply("isNullOrEmpty", arg)
     }
 
-    public isNullOrBlank(arg: Reference): Reference {
+    public isNullOrBlank(arg: Expression): Expression {
         return this.invoker.apply("isNullOrBlank", arg)
     }
 
-    public isNumber(arg: Reference): Reference {
+    public isNumber(arg: Expression): Expression {
         return this.invoker.apply("isNumber", arg)
     }
 
-    public isString(arg: Reference): Reference {
+    public isString(arg: Expression): Expression {
         return this.invoker.apply("isString", arg)
     }
 
-    public isBoolean(arg: Reference): Reference {
+    public isBoolean(arg: Expression): Expression {
         return this.invoker.apply("isBoolean", arg)
     }
 
-    public isList(arg: Reference): Reference {
+    public isList(arg: Expression): Expression {
         return this.invoker.apply("isList", arg)
     }
 
-    public isMap(arg: Reference): Reference {
+    public isMap(arg: Expression): Expression {
         return this.invoker.apply("isMap", arg)
     }
 
-    public matches(arg1: Reference, arg2: Reference): Reference {
+    public matches(arg1: Expression, arg2: Expression): Expression {
         return this.invoker.apply("matches", arg1, arg2)
     }
 
-    public parseJson(arg: Reference): Reference {
+    public parseJson(arg: Expression): Expression {
         return this.invoker.apply("parseJson", arg)
     }
 
-    public quiet(r: Reference): void {
-        r.quiet()
+    public quiet(r: Expression): void {
+        this.invoker.apply("qr", r)
     }
 
-    public toJson(arg: Reference): Reference {
+    public toJson(arg: Expression): Expression {
         return this.invoker.apply("toJson", arg)
     }
 
-    public typeOf(arg: Reference): Reference {
+    public typeOf(arg: Expression): Expression {
         return this.invoker.apply("typeOf", arg)
     }
 
     public unauthorized(): void {
-        this.invoker.apply("unauthorized").consume()
+        this.invoker.apply("unauthorized")
     }
 
-    public urlEncode(arg: Reference): Reference {
+    public urlEncode(arg: Expression): Expression {
         return this.invoker.apply("urlEncode", arg)
     }
 
-    public urlDecode(arg: Reference): Reference {
+    public urlDecode(arg: Expression): Expression {
         return this.invoker.apply("urlDecode", arg)
     }
 
-    public validate(cond: Reference, msg?: Reference, errorType?: Reference, data?: Reference): Reference {
+    public validate(cond: Expression, msg?: Expression, errorType?: Expression, data?: Expression): Expression {
         return this.invoker.apply("validate", cond, msg, errorType, data)
     }
 }
