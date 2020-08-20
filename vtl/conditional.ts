@@ -11,7 +11,7 @@ interface Cond {
 export class Conditional extends MappingTemplate {
     private readonly _then: Cond
     private readonly _elseThen: Cond[] = []
-    private readonly _else?: () => void
+    private _else?: () => void
 
     public constructor(private readonly builder: TemplateBuilder, condition: Expression, body: () => void) {
         super()
@@ -27,7 +27,7 @@ export class Conditional extends MappingTemplate {
     }
 
     public else(body: () => void): void {
-        this.else = body
+        this._else = body
     }
 
     public renderTemplate(i: number): string {

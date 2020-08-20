@@ -223,8 +223,7 @@ test("GetPortfolioById", () => {
         r.literal({
             metadata: {
                 id: {
-                    //id: r.util.toJson(r.ctx.result("items").index(0)),
-                    id: r.util.toJson(r.ctx.result("items")),
+                    id: r.util.toJson(r.ctx.result("items").index(0).access("PK")),
                 },
             },
         })

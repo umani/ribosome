@@ -183,7 +183,7 @@ export class Reference extends Expression {
 
     public index(idx: unknown): Reference {
         this.consume()
-        return new IndexReference(this.builder, this.name, idx)
+        return new Reference(this.builder, `${this.name}[${stringify(idx, 0)}]`)
     }
 
     // Like access(), but asserts that the returned reference if a Map.
@@ -199,18 +199,6 @@ export class Reference extends Expression {
     public renderTemplate(i: number): string {
         const prefix = this._quiet ? "$!{" : "${"
         return indent(i, `${prefix}${this.name}}`)
-    }
-}
-
-export class IndexReference extends Reference {
-    public constructor(builder: TemplateBuilder, name: string, private readonly idx: unknown) {
-        super(builder, name)
-        consume(idx)
-    }
-
-    public renderTemplate(i: number): string {
-        const prefix = this._quiet ? "$!{" : "${"
-        return indent(i, `${prefix}${this.name}[${stringify(this.idx, 0)}]}`)
     }
 }
 
