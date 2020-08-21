@@ -29,7 +29,7 @@ export class Identity {
     public constructor(private readonly builder: TemplateBuilder, private readonly identity: Reference) {}
 
     public get username(): Reference {
-        return this.identity.accessMap("stash")
+        return this.identity.accessMap("username")
     }
 
     public get sub(): Reference {
