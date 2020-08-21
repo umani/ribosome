@@ -25,7 +25,7 @@ import { indent } from "../indent"
 export abstract class Expression extends MappingTemplate {
     protected _quiet = false
 
-    public constructor(protected readonly builder: TemplateBuilder, protected readonly name: string) {
+    public constructor(protected readonly builder: TemplateBuilder) {
         super()
         this.builder.appendTemplate(this)
     }
@@ -112,7 +112,7 @@ export abstract class Expression extends MappingTemplate {
 
 export class UnaryExpression extends Expression {
     constructor(builder: TemplateBuilder, private readonly op: string, private readonly ref: Expression) {
-        super(builder, "")
+        super(builder)
         ref.consume()
     }
 
@@ -129,7 +129,7 @@ export class BinaryExpression extends Expression {
         private readonly exp2: Expression,
         private readonly parens: boolean = true,
     ) {
-        super(builder, "")
+        super(builder)
         exp1.consume()
         exp2.consume()
     }
@@ -145,8 +145,8 @@ export class BinaryExpression extends Expression {
 }
 
 export class Reference extends Expression {
-    public constructor(builder: TemplateBuilder, public name: string) {
-        super(builder, name)
+    public constructor(builder: TemplateBuilder, public readonly name: string) {
+        super(builder)
     }
 
     public assign(value: unknown): void {

@@ -1,7 +1,7 @@
 {
     "name": "app-sync-mapping-template-model",
     "author": "Duarte Nunes",
-    "version": "0.1.7",
+    "version": "0.1.8",
     "description": "A library exploring an object model for AWS AppSync Mapping Templates",
     "license": "UNLICENSED",
     "main": "dist/index.js",
