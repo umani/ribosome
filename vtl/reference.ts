@@ -211,12 +211,12 @@ export class MapReference extends Reference {
         return this.invoke("get", k)
     }
 
-    public put(k: unknown, v: unknown): void {
-        this.invoke("put", this.builder.literal(k), this.builder.literal(v))
+    public put(k: unknown, v: unknown): Reference {
+        return this.invoke("put", this.builder.literal(k), this.builder.literal(v))
     }
 
-    public putAll(m: unknown): void {
-        this.invoke("putAll", this.builder.literal(m))
+    public putAll(m: unknown): Reference {
+        return this.invoke("putAll", this.builder.literal(m))
     }
 
     public entrySet(): Reference {
