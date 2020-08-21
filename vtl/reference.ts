@@ -215,6 +215,10 @@ export class MapReference extends Reference {
         this.invoke("put", this.builder.literal(k), this.builder.literal(v))
     }
 
+    public putAll(m: unknown): void {
+        this.invoke("putAll", this.builder.literal(m))
+    }
+
     public entrySet(): Reference {
         return this.invoke("entrySet")
     }
