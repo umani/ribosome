@@ -268,7 +268,8 @@ function stringify(v: unknown, i: number): string {
     }
     if (v instanceof Object) {
         const contents = Object.entries(v)
-            .map(([k, v]) => indent(i + 2, `"${k}": ${stringify(v, i + 2)}`))
+            .map(([k, v]) => v !== undefined ? indent(i + 2, `"${k}": ${stringify(v, i + 2)}`) : "")
+            .filter(l => l.length > 0)
             .join(",\n")
         return contents.length > 0 ? ["{", contents, indent(i, "}")].join("\n") : "{ }"
     }

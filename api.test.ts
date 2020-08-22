@@ -1,6 +1,6 @@
 import { Api } from "./api"
 import { MappingTemplateVersion } from "./mapping-template"
-import { Query } from "./dynamo/dynamo-conditions"
+import { Query, ConditionExpression } from "./dynamo/dynamo-conditions"
 
 test("Simple template", () => {
     const t = Api.requestTemplate(r => {
@@ -259,6 +259,7 @@ test("TransactPut", () => {
                             attr2: r.ctx.stash.get("val"),
                         },
                     },
+                    cond: ConditionExpression.attributeNotExists("alias"),
                 },
             ],
         })
