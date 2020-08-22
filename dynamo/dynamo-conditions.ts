@@ -39,7 +39,7 @@ class ExpressionNamesAliasGenerator {
 
 interface OperandCollector {
     readonly expressionNames: ExpressionNamesAliasGenerator
-    readonly attributeValues: ExpressionValuesAliasGenerator
+    readonly expressionValues: ExpressionValuesAliasGenerator
 }
 
 /**
@@ -63,13 +63,17 @@ abstract class BaseCondition {
     public resolve(builder: TemplateBuilder): ResolvedCondition {
         const collector: OperandCollector = {
             expressionNames: new ExpressionNamesAliasGenerator(),
-            attributeValues: new ExpressionValuesAliasGenerator(builder),
+            expressionValues: new ExpressionValuesAliasGenerator(builder),
         }
         const condition = this.resolveCondition(collector)
+        const expressionOrEmpty = (k: keyof OperandCollector): Partial<OperandCollector[keyof OperandCollector]> => 
+            Object.entries(collector[k].result).length > 0 ? {
+                [k]: collector[k].result
+            } : {}
         return {
             expression: condition,
-            expressionNames: collector.expressionNames.result,
-            expressionValues: collector.attributeValues.result,
+            ...expressionOrEmpty("expressionNames"),
+            ...expressionOrEmpty("expressionValues"),
         }
     }
 
@@ -98,7 +102,7 @@ class ExpressionOperand implements IOperand {
     }
 
     public _resolve(collector: OperandCollector): string {
-        return collector.attributeValues.aliasFor(this.arg)
+        return collector.expressionValues.aliasFor(this.arg)
     }
 }
 
