@@ -6,7 +6,7 @@ export class Time {
     private readonly invoker: MethodWrapper
 
     public constructor(builder: TemplateBuilder) {
-        this.invoker = new MethodWrapper(builder, "$util.time")
+        this.invoker = new MethodWrapper(builder, "util.time")
     }
 
     public nowISO8601(): Reference {

@@ -3,6 +3,7 @@ import { TemplateBuilder } from "../builder"
 import { Reference, Expression, Method } from "../vtl/reference"
 import { ConditionExpression, Query } from "./dynamo-conditions"
 import { DynamoDBUtils } from "../appsync/dynamodb-utils"
+import { Util } from "../appsync/util"
 
 export interface PrimaryKey {
     readonly [k: string]: Expression
@@ -64,7 +65,7 @@ export class DynamoDbRequestUtils {
             return undefined
         }
         const values = this.builder.map(attrs.projecting)
-        Object.entries(attrs.values).forEach(([k, v]) => values?.put(k, v.consume()))
+        Object.entries(attrs.values).forEach(([k, v]) => new Util(this.builder).quiet(values?.put(k, v.consume())))
         return new DynamoDBUtils(this.builder).toMapValuesJson(values)
     }
 

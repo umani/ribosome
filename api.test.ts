@@ -110,8 +110,8 @@ test("DynamoDB templates", () => {
         })
     })
     expect(put).toBe(`#set($var0 = { })
-\${var0.put("attr1", 1)}
-\${var0.put("attr2", \${ctx.stash.get("val")})}
+\${util.qr(\${var0.put("attr1", 1)})}
+\${util.qr(\${var0.put("attr2", \${ctx.stash.get("val")})})}
 {
   "operation": "PutItem",
   "version": "2017-02-28",
