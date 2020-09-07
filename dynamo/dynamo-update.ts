@@ -111,15 +111,35 @@ abstract class BaseAction {
  * This action takes as input a path (Attribute) and a value. A value can be a path,
  * a operation, a function or a literal value, represented by the base IOperand interface.
  */
-type SetActionInput = { attribute: Attribute; value: IOperand }
 class SetAction extends BaseAction {
-    constructor(private readonly attr: SetActionInput[]) {
+    constructor(private readonly attrs: ISetOperation[]) {
         super()
     }
 
+    private resolveValue(props: ISetOperation): IOperand | undefined {
+        if (props.add !== undefined) {
+            return new Add(props.add.left, props.add.right)
+        }
+        if (props.sub !== undefined) {
+            return new Subtract(props.sub.left, props.sub.right)
+        }
+        if (props.if_not_exists !== undefined) {
+            return new IfNotExists(
+                props.if_not_exists.attribute ? props.if_not_exists.attribute : props.attribute,
+                props.if_not_exists.value,
+            )
+        }
+        if (props.list_append !== undefined) {
+            return new ListAppend(props.list_append.list1, props.list_append.list2)
+        }
+        return props.value
+    }
+
     resolveAction(collector: OperandCollector): string {
-        return `SET ${this.attr
-            .map(({ attribute, value }) => `${attribute._resolve(collector)}=${value._resolve(collector)}`)
+        return `SET ${this.attrs
+            .map(attr => ({ attribute: attr.attribute, value: this.resolveValue(attr) }))
+            .filter(attr => attr.value !== undefined)
+            .map(attr => `${attr.attribute._resolve(collector)}=${attr.value?._resolve(collector)}`)
             .join(", ")}`
     }
 }
@@ -182,46 +202,6 @@ interface ISetOperation {
 }
 
 /**
- * Factory class for the Set Expression, part of the Update Expression.
- * Takes ISetOperation as input and parses it to a correspondent operator or function class.
- */
-class SetExpression {
-    constructor(private readonly props: ISetOperation) {}
-
-    private resolveValue(): IOperand | undefined {
-        if (this.props.add !== undefined) {
-            return new Add(this.props.add.left, this.props.add.right)
-        }
-        if (this.props.sub !== undefined) {
-            return new Subtract(this.props.sub.left, this.props.sub.right)
-        }
-        if (this.props.if_not_exists !== undefined) {
-            return new IfNotExists(
-                this.props.if_not_exists.attribute ? this.props.if_not_exists.attribute : this.props.attribute,
-                this.props.if_not_exists.value,
-            )
-        }
-        if (this.props.list_append !== undefined) {
-            return new ListAppend(this.props.list_append.list1, this.props.list_append.list2)
-        }
-        return this.props.value
-    }
-
-    public resolve(): { attribute: Attribute; value: IOperand | undefined } {
-        return {
-            attribute: this.props.attribute,
-            value: this.resolveValue(),
-        }
-    }
-
-    static resolveAll(props: ISetOperation[]): SetActionInput[] {
-        return props
-            .map(prop => new SetExpression(prop).resolve())
-            .filter(prop => prop.value !== undefined) as SetActionInput[]
-    }
-}
-
-/**
  * Interface that represents an Update Expression and its actions.
  */
 export interface UpdateExpression {
@@ -238,23 +218,19 @@ export class Update {
     constructor(private readonly expression: UpdateExpression) {}
 
     public resolve(builder: TemplateBuilder): ResolvedExpression {
-        return Object.entries(this.expression)
-            .map(([action, props]) =>
-                action === "set"
-                    ? new SetAction(SetExpression.resolveAll(props as NonNullable<UpdateExpression["set"]>)).resolve(
-                          builder,
-                      )
-                    : action === "remove"
-                    ? new RemoveAction(props as NonNullable<UpdateExpression["remove"]>).resolve(builder)
-                    : new DeleteAction(props as NonNullable<UpdateExpression["delete"]>).resolve(builder),
-            )
-            .reduce(
-                (prev, cur) => ({
-                    expression: (prev.expression + " " + cur.expression).trim(),
-                    expressionNames: { ...prev.expressionNames, ...cur.expressionNames },
-                    expressionValues: { ...prev.expressionValues, ...cur.expressionValues },
-                }),
-                { expression: "" },
-            )
+        const empty: ResolvedExpression = { expression: "" }
+
+        return [
+            { ...(this.expression.set ? new SetAction(this.expression.set).resolve(builder) : empty) },
+            { ...(this.expression.remove ? new RemoveAction(this.expression.remove).resolve(builder) : empty) },
+            { ...(this.expression.delete ? new DeleteAction(this.expression.delete).resolve(builder) : empty) },
+        ].reduce(
+            (prev, cur) => ({
+                expression: (prev.expression + " " + cur.expression).trim(),
+                expressionNames: { ...prev.expressionNames, ...cur.expressionNames },
+                expressionValues: { ...prev.expressionValues, ...cur.expressionValues },
+            }),
+            empty,
+        )
     }
 }
