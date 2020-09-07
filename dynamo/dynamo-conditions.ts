@@ -93,20 +93,6 @@ abstract class FunctionCondition extends BaseCondition implements IOperand {
 }
 
 /**
- * Operand from VTL Expressions. This bridges the template
- * world with the DynamoDB world.
- */
-class ExpressionOperand implements IOperand {
-    public constructor(private readonly arg: Expression) {
-        arg.consume()
-    }
-
-    public _resolve(collector: OperandCollector): string {
-        return collector.expressionValues.aliasFor(this.arg)
-    }
-}
-
-/**
  * Base class for DynamoDB attributes.
  */
 export abstract class Attribute implements IOperand {
@@ -324,7 +310,7 @@ class Contains extends AttributeValueFunction {
  * Utility class to represent DynamoDB "contains" conditions.
  */
 class AttributeType extends AttributeValueFunction {
-    constructor(attr: AttributeOperand, type: ExpressionOperand) {
+    constructor(attr: AttributeOperand, type: Expression) {
         super(attr, type, "attribute_type")
     }
 }
@@ -344,7 +330,7 @@ export class Operand {
      * Returns an operand that's a value, coming from the GraphQL request.
      */
     public static from(attr: Expression): IOperand {
-        return new ExpressionOperand(attr)
+        return attr
     }
 
     /**
@@ -363,51 +349,49 @@ export class Query {
      * Condition k = arg, true if the key attribute k is equal to the Query argument
      */
     public static eq(keyName: string, arg: Expression): Query {
-        return new Query(new ComparatorCondition(new AttributeOperand(keyName), "=", new ExpressionOperand(arg)))
+        return new Query(new ComparatorCondition(new AttributeOperand(keyName), "=", arg))
     }
 
     /**
      * Condition k < arg, true if the key attribute k is less than the Query argument
      */
     public static lt(keyName: string, arg: Expression): Query {
-        return new Query(new ComparatorCondition(new AttributeOperand(keyName), "<", new ExpressionOperand(arg)))
+        return new Query(new ComparatorCondition(new AttributeOperand(keyName), "<", arg))
     }
 
     /**
      * Condition k <= arg, true if the key attribute k is less than or equal to the Query argument
      */
     public static le(keyName: string, arg: Expression): Query {
-        return new Query(new ComparatorCondition(new AttributeOperand(keyName), "<=", new ExpressionOperand(arg)))
+        return new Query(new ComparatorCondition(new AttributeOperand(keyName), "<=", arg))
     }
 
     /**
      * Condition k > arg, true if the key attribute k is greater than the the Query argument
      */
     public static gt(keyName: string, arg: Expression): Query {
-        return new Query(new ComparatorCondition(new AttributeOperand(keyName), ">", new ExpressionOperand(arg)))
+        return new Query(new ComparatorCondition(new AttributeOperand(keyName), ">", arg))
     }
 
     /**
      * Condition k >= arg, true if the key attribute k is greater or equal to the Query argument
      */
     public static ge(keyName: string, arg: Expression): Query {
-        return new Query(new ComparatorCondition(new AttributeOperand(keyName), ">=", new ExpressionOperand(arg)))
+        return new Query(new ComparatorCondition(new AttributeOperand(keyName), ">=", arg))
     }
 
     /**
      * Condition (k, arg). True if the key attribute k begins with the Query argument.
      */
     public static beginsWith(keyName: string, arg: Expression): Query {
-        return new Query(new BeginsWith(new AttributeOperand(keyName), new ExpressionOperand(arg)))
+        return new Query(new BeginsWith(new AttributeOperand(keyName), arg))
     }
 
     /**
      * Condition k BETWEEN arg1 AND arg2, true if k >= arg1 and k <= arg2.
      */
     public static between(keyName: string, arg1: Expression, arg2: Expression): Query {
-        return new Query(
-            new Between(new AttributeOperand(keyName), new ExpressionOperand(arg1), new ExpressionOperand(arg2)),
-        )
+        return new Query(new Between(new AttributeOperand(keyName), arg1, arg2))
     }
 
     private constructor(private readonly cond: BaseCondition) {}
@@ -491,7 +475,7 @@ export class ConditionExpression {
      * True if the specified attribute is of a particular data type.
      */
     public static attributeType(attr: string, type: Expression): ConditionExpression {
-        return new ConditionExpression(new AttributeType(new AttributeOperand(attr), new ExpressionOperand(type)))
+        return new ConditionExpression(new AttributeType(new AttributeOperand(attr), type))
     }
 
     /**
