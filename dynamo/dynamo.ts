@@ -50,9 +50,14 @@ export interface TransactPutItemProps extends TransactWriteItemProps {
     attributes?: AttributeValues
 }
 
+export interface TransactUpdateItemProps extends TransactWriteItemProps {
+    update?: UpdateExpression
+}
+
 export interface TransactWriteItems {
     readonly puts?: TransactPutItemProps[]
     readonly deletes?: TransactWriteItemProps[]
+    readonly updates?: TransactUpdateItemProps[]
 }
 
 export class DynamoDbRequestUtils {
@@ -149,10 +154,19 @@ export class DynamoDbRequestUtils {
                 operation: "DeleteItem",
             }),
         )
+
+        const updates = (tx.updates || []).map(d =>
+            this.builder.literal({
+                ...common(d),
+                operation: "UpdateItem",
+                update: new Update(d.update || {}).resolve(this.builder),
+            }),
+        )
+
         this.builder.literal({
             version: MappingTemplateVersion.V2,
             operation: "TransactWriteItems",
-            transactItems: [...puts, ...deletes],
+            transactItems: [...puts, ...deletes, ...updates],
         })
     }
 }
