@@ -1,6 +1,6 @@
 import { Api } from "./api"
 import { MappingTemplateVersion } from "./mapping-template"
-import { Query, ConditionExpression } from "./dynamo/dynamo-conditions"
+import { Query, ConditionExpression, Attribute, ListItem } from "./dynamo/dynamo-conditions"
 
 test("Simple template", () => {
     const t = Api.requestTemplate(r => {
@@ -265,4 +265,81 @@ test("TransactPut", () => {
         })
     })
     console.log(req)
+})
+
+describe("UpdatePortfolio", () => {
+    Api.setGlobalVersion(MappingTemplateVersion.V2)
+
+    describe("set", () => {
+        const req = Api.requestTemplate(r => {
+            r.dynamoDb.updateItem({
+                key: {
+                    PK: r.ctx.stash.get("pfId"),
+                    SK: r.ctx.stash.get("username"),
+                },
+                update: {
+                    set: [
+                        {
+                            attribute: Attribute.from("attr1", "innerAttr1"),
+                            add: {
+                                left: Attribute.from("attr2"),
+                                right: r.literal(2),
+                            },
+                        },
+                        {
+                            attribute: new ListItem(Attribute.from("field"), 3),
+                            if_not_exists: {
+                                value: r.literal(2),
+                            },
+                        },
+                        {
+                            attribute: Attribute.from("attr3"),
+                            value: r.literal(2),
+                        },
+                        {
+                            attribute: Attribute.from("attr4"),
+                            list_append: {
+                                list1: Attribute.from("attr4"),
+                                list2: Attribute.from("list2"),
+                            },
+                        },
+                    ],
+                },
+            })
+        })
+
+        console.log(req)
+    })
+
+    describe("remove", () => {
+        const req = Api.requestTemplate(r => {
+            r.dynamoDb.updateItem({
+                key: {
+                    PK: r.ctx.stash.get("pfId"),
+                    SK: r.ctx.stash.get("username"),
+                },
+                update: {
+                    remove: [Attribute.from("attr1"), Attribute.from("attr2"), Attribute.from("attr3", "innerAttr3")],
+                },
+            })
+        })
+
+        console.log(req)
+    })
+
+    describe("delete", () => {
+        const req = Api.requestTemplate(r => {
+            r.dynamoDb.updateItem({
+                key: {
+                    PK: r.ctx.stash.get("pfId"),
+                    SK: r.ctx.stash.get("username"),
+                },
+                update: {
+                    delete: [r.literal({ set: { item: 2 } })],
+                },
+            })
+        })
+
+        console.log(req)
+    })
 })
