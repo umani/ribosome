@@ -8,7 +8,7 @@ export interface ResolvedCondition {
     readonly expressionValues?: Record<string, Expression>
 }
 
-class ExpressionValuesAliasGenerator {
+export class ExpressionValuesAliasGenerator {
     public readonly result: Record<string, Expression> = {}
     private readonly dedup: Record<string, string> = {}
     private generator = 0
@@ -27,7 +27,7 @@ class ExpressionValuesAliasGenerator {
     }
 }
 
-class ExpressionNamesAliasGenerator {
+export class ExpressionNamesAliasGenerator {
     public readonly result: Record<string, string> = {}
 
     public aliasFor(attributeName: string): string {
@@ -37,7 +37,7 @@ class ExpressionNamesAliasGenerator {
     }
 }
 
-interface OperandCollector {
+export interface OperandCollector {
     readonly expressionNames: ExpressionNamesAliasGenerator
     readonly expressionValues: ExpressionValuesAliasGenerator
 }

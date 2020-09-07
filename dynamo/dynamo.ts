@@ -4,6 +4,7 @@ import { Reference, Expression, Method } from "../vtl/reference"
 import { ConditionExpression, Query } from "./dynamo-conditions"
 import { DynamoDBUtils } from "../appsync/dynamodb-utils"
 import { Util } from "../appsync/util"
+import { Update, UpdateExpression } from "./dynamo-update"
 
 export interface PrimaryKey {
     readonly [k: string]: Expression
@@ -21,6 +22,11 @@ export interface PutItemProps {
     key: PrimaryKey
     attributes?: AttributeValues
     cond?: ConditionExpression
+}
+
+export interface UpdateItemProps {
+    key: PrimaryKey
+    update: UpdateExpression
 }
 
 export interface GetItemProps {
@@ -77,6 +83,15 @@ export class DynamoDbRequestUtils {
             key: this.keyToDynamoJson(props.key),
             ...(values ? { attributeValues: values } : {}),
             ...(props.cond ? { condition: props.cond.resolve(this.builder) } : {}),
+        })
+    }
+
+    public updateItem(props: UpdateItemProps): void {
+        this.builder.literal({
+            operation: "UpdateItem",
+            version: MappingTemplateVersion.V1,
+            key: this.keyToDynamoJson(props.key),
+            update: new Update(props.update).resolve(this.builder),
         })
     }
 
