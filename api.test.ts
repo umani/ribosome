@@ -262,6 +262,24 @@ test("TransactPut", () => {
                     cond: ConditionExpression.attributeNotExists("alias"),
                 },
             ],
+            updates: [
+                {
+                    tableName: "thecube",
+                    key: {
+                        pk: r.literal("id"),
+                        sk: r.ctx.arg("sk"),
+                    },
+                    update: {
+                        set: [
+                            {
+                                attribute: Attribute.from("bla"),
+                                value: r.literal(2),
+                            },
+                        ],
+                    },
+                    cond: ConditionExpression.attributeNotExists("bla"),
+                },
+            ],
         })
     })
     console.log(req)
