@@ -107,9 +107,44 @@ class ExpressionOperand implements IOperand {
 }
 
 /**
- * Attribute operand, a DynamoDB attribute name. Might be a path.
+ * Base class for DynamoDB attributes.
  */
-class AttributeOperand implements IOperand {
+export abstract class Attribute implements IOperand {
+    public abstract _resolve(collector: OperandCollector): string
+
+    static from(...attrs: string[]): Attribute {
+        return attrs.length === 1 ? new AttributeOperand(attrs[0]) : new Path(attrs.map(a => new AttributeOperand(a)))
+    }
+}
+
+/**
+ * DynamoDB's path attribute.
+ */
+export class Path implements Attribute {
+    constructor(private readonly path: Attribute[]) {}
+
+    public _resolve(collector: OperandCollector): string {
+        return this.path.map(p => p._resolve(collector)).join(".")
+    }
+}
+
+/**
+ * DynamoDB's ListItem Path is the path to a item in a list.
+ */
+export class ListItem extends Path {
+    constructor(private readonly attr: Attribute, private readonly position: number) {
+        super([])
+    }
+
+    public _resolve(collector: OperandCollector): string {
+        return `${this.attr._resolve(collector)}[${this.position}]`
+    }
+}
+
+/**
+ * Attribute operand, a DynamoDB attribute name.
+ */
+export class AttributeOperand implements Attribute {
     constructor(private readonly arg: string) {}
 
     public _resolve(collector: OperandCollector): string {
