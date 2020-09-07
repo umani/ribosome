@@ -1,6 +1,7 @@
 import { MappingTemplate } from "../mapping-template"
 import { TemplateBuilder } from "../builder"
 import { indent } from "../indent"
+import { IOperand, OperandCollector } from "dynamo/dynamo-conditions"
 
 // Reference: https://velocity.apache.org/engine/1.7/user-guide.html#set
 // Note: We consider VTL 1.7, which is linked from AppSync documentation.
@@ -22,7 +23,7 @@ import { indent } from "../indent"
 // hyphen ("-")
 // underscore ("_")
 
-export abstract class Expression extends MappingTemplate {
+export abstract class Expression extends MappingTemplate implements IOperand {
     protected _quiet = false
 
     public constructor(protected readonly builder: TemplateBuilder) {
@@ -107,6 +108,10 @@ export abstract class Expression extends MappingTemplate {
     public toString(): string {
         this.consume()
         return this.renderTemplate(0)
+    }
+
+    public _resolve(collector: OperandCollector): string {
+        return collector.expressionValues.aliasFor(this.consume())
     }
 }
 
