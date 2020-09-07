@@ -27,6 +27,7 @@ export interface PutItemProps {
 export interface UpdateItemProps {
     key: PrimaryKey
     update: UpdateExpression
+    cond?: ConditionExpression
 }
 
 export interface GetItemProps {
@@ -92,6 +93,7 @@ export class DynamoDbRequestUtils {
             version: MappingTemplateVersion.V1,
             key: this.keyToDynamoJson(props.key),
             update: new Update(props.update).resolve(this.builder),
+            ...(props.cond ? { condition: props.cond.resolve(this.builder) } : {}),
         })
     }
 
