@@ -5,8 +5,8 @@ import {
     Attribute,
     IOperand,
 } from "./dynamo-conditions"
-import { Expression } from "vtl/reference"
-import { TemplateBuilder } from "builder"
+import { Expression } from "../vtl/reference"
+import { TemplateBuilder } from "../builder"
 
 /**
  * SetOperator is the base class for the increment and decrement

@@ -1,7 +1,7 @@
 import { MappingTemplate } from "../mapping-template"
 import { TemplateBuilder } from "../builder"
 import { indent } from "../indent"
-import { IOperand, OperandCollector } from "dynamo/dynamo-conditions"
+import { IOperand, OperandCollector } from "../dynamo/dynamo-conditions"
 
 // Reference: https://velocity.apache.org/engine/1.7/user-guide.html#set
 // Note: We consider VTL 1.7, which is linked from AppSync documentation.
