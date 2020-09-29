@@ -82,7 +82,7 @@ export class DynamoDbRequestUtils {
         return new DynamoDBUtils(this.builder).toMapValues(values)
     }
 
-    public putItem(props: PutItemProps): Reference {
+    public putItem(props: PutItemProps): DataSource {
         const values = this.prepareAttributes(props.attributes)
         return new DataSource(this.builder, {
             operation: "PutItem",
@@ -93,7 +93,7 @@ export class DynamoDbRequestUtils {
         })
     }
 
-    public updateItem(props: UpdateItemProps): Reference {
+    public updateItem(props: UpdateItemProps): DataSource {
         return new DataSource(this.builder, {
             operation: "UpdateItem",
             version: MappingTemplateVersion.V1,
@@ -103,7 +103,7 @@ export class DynamoDbRequestUtils {
         })
     }
 
-    public getItem(props: GetItemProps): Reference {
+    public getItem(props: GetItemProps): DataSource {
         return new DataSource(this.builder, {
             operation: "GetItem",
             version: MappingTemplateVersion.V1,
@@ -111,7 +111,7 @@ export class DynamoDbRequestUtils {
         })
     }
 
-    public deleteItem(props: DeleteItemProps): Reference {
+    public deleteItem(props: DeleteItemProps): DataSource {
         return new DataSource(this.builder, {
             operation: "DeleteItem",
             version: MappingTemplateVersion.V1,
@@ -120,7 +120,7 @@ export class DynamoDbRequestUtils {
         })
     }
 
-    public query(q: Query): Reference {
+    public query(q: Query): DataSource {
         return new DataSource(this.builder, {
             operation: "Query",
             version: MappingTemplateVersion.V1,
@@ -128,7 +128,7 @@ export class DynamoDbRequestUtils {
         })
     }
 
-    public transactWrite(tx: TransactWriteItems): Reference {
+    public transactWrite(tx: TransactWriteItems): DataSource {
         const common = (item: TransactWriteItemProps): Record<string, unknown> => ({
             table: item.tableName,
             key: this.keyToDynamo(item.key),
