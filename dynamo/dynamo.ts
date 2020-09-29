@@ -81,9 +81,9 @@ export class DynamoDbRequestUtils {
         return new DynamoDBUtils(this.builder).toMapValuesJson(values)
     }
 
-    public putItem(props: PutItemProps): void {
+    public putItem(props: PutItemProps): Reference {
         const values = this.prepareAttributes(props.attributes)
-        this.builder.literal({
+        return this.builder.literal({
             operation: "PutItem",
             version: MappingTemplateVersion.V1,
             key: this.keyToDynamoJson(props.key),
@@ -92,8 +92,8 @@ export class DynamoDbRequestUtils {
         })
     }
 
-    public updateItem(props: UpdateItemProps): void {
-        this.builder.literal({
+    public updateItem(props: UpdateItemProps): Reference {
+        return this.builder.literal({
             operation: "UpdateItem",
             version: MappingTemplateVersion.V1,
             key: this.keyToDynamoJson(props.key),
@@ -102,16 +102,16 @@ export class DynamoDbRequestUtils {
         })
     }
 
-    public getItem(props: GetItemProps): void {
-        this.builder.literal({
+    public getItem(props: GetItemProps): Reference {
+        return this.builder.literal({
             operation: "GetItem",
             version: MappingTemplateVersion.V1,
             key: this.keyToDynamoJson(props.key),
         })
     }
 
-    public deleteItem(props: DeleteItemProps): void {
-        this.builder.literal({
+    public deleteItem(props: DeleteItemProps): Reference {
+        return this.builder.literal({
             operation: "DeleteItem",
             version: MappingTemplateVersion.V1,
             key: this.keyToDynamoJson(props.key),
@@ -119,15 +119,15 @@ export class DynamoDbRequestUtils {
         })
     }
 
-    public query(q: Query): void {
-        this.builder.literal({
+    public query(q: Query): Reference {
+        return this.builder.literal({
             operation: "Query",
             version: MappingTemplateVersion.V1,
             query: q.resolve(this.builder),
         })
     }
 
-    public transactWrite(tx: TransactWriteItems): void {
+    public transactWrite(tx: TransactWriteItems): Reference {
         const common = (item: TransactWriteItemProps): Record<string, unknown> => ({
             table: item.tableName,
             key: this.keyToDynamoJson(item.key),
@@ -163,7 +163,7 @@ export class DynamoDbRequestUtils {
             }),
         )
 
-        this.builder.literal({
+        return this.builder.literal({
             version: MappingTemplateVersion.V2,
             operation: "TransactWriteItems",
             transactItems: [...puts, ...deletes, ...updates],

@@ -27,8 +27,8 @@ export class TemplateBuilder extends MappingTemplate {
     }
 
     // Allowed types: array, number, boolean, map, string
-    public literal(value: unknown): Expression {
-        return value instanceof Expression ? value : new Literal(this, value)
+    public literal(value: unknown): Reference {
+        return value instanceof Reference ? value : new Literal(this, value)
     }
 
     private init(v: Reference, init: unknown): void {

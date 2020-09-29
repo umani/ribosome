@@ -361,3 +361,38 @@ describe("UpdatePortfolio", () => {
         console.log(req)
     })
 })
+
+test("can modify DynamoDB operation", () => {
+    const req = Api.requestTemplate(r => {
+        const op = r.variable(r.dynamoDb.transactWrite({
+            puts: [
+                {
+                    tableName: "table",
+                    key: {
+                        PK: r.literal("id1"),
+                    },
+                    attributes: {
+                        values: {
+                            attr: r.literal("blah"),
+                        }
+                    },
+                },
+            ],
+        }))
+        r.if(r.literal(2).eq(r.literal(4)), () => {
+            const delOp = r.variable(r.dynamoDb.transactWrite({
+                deletes: [
+                    {
+                        tableName: "table",
+                        key: {
+                            PK: r.literal("id2"),
+                        },
+                    },
+                ],
+            }))
+            op.access("transactItems").invoke("add", delOp.access("transactItems").index(0))
+        })
+        r.ret(op)
+    })
+    console.log(req)
+})
