@@ -1,6 +1,6 @@
 // Implements the helpers in AppSync's $util
 
-import { Expression } from "../vtl/reference"
+import { Expression, Reference } from "../vtl/reference"
 import { TemplateBuilder } from "../builder"
 import { MethodWrapper } from "../vtl/method-wrapper"
 import { Time } from "./time"
@@ -63,27 +63,27 @@ export class Util {
         this.invoker.apply("appendError", msg, errorType, data, errorInfo)
     }
 
-    public autoId(): Expression {
+    public autoId(): Reference {
         return this.invoker.apply("autoId")
     }
 
-    public base64Encode(arg: Expression): Expression {
+    public base64Encode(arg: Expression): Reference {
         return this.invoker.apply("base64Encode", arg)
     }
 
-    public base64Decode(arg: Expression): Expression {
+    public base64Decode(arg: Expression): Reference {
         return this.invoker.apply("base64Decode", arg)
     }
 
-    public defaultIfNull(arg: Expression, d: Expression): Expression {
+    public defaultIfNull(arg: Expression, d: Expression): Reference {
         return this.invoker.apply("defaultIfNull", arg, d)
     }
 
-    public defaultIfNullOrEmpty(arg: Expression, d: Expression): Expression {
+    public defaultIfNullOrEmpty(arg: Expression, d: Expression): Reference {
         return this.invoker.apply("defaultIfNullOrEmpty", arg, d)
     }
 
-    public defaultIfNullOrBlank(arg: Expression, d: Expression): Expression {
+    public defaultIfNullOrBlank(arg: Expression, d: Expression): Reference {
         return this.invoker.apply("defaultIfNullOrBlank", arg, d)
     }
 
@@ -91,47 +91,47 @@ export class Util {
         this.invoker.apply("error", msg, errorType, data, errorInfo)
     }
 
-    public escapeJavaScript(arg: Expression): Expression {
+    public escapeJavaScript(arg: Expression): Reference {
         return this.invoker.apply("escapeJavaScript", arg)
     }
 
-    public isNull(arg: Expression): Expression {
+    public isNull(arg: Expression): Reference {
         return this.invoker.apply("isNull", arg)
     }
 
-    public isNullOrEmpty(arg: Expression): Expression {
+    public isNullOrEmpty(arg: Expression): Reference {
         return this.invoker.apply("isNullOrEmpty", arg)
     }
 
-    public isNullOrBlank(arg: Expression): Expression {
+    public isNullOrBlank(arg: Expression): Reference {
         return this.invoker.apply("isNullOrBlank", arg)
     }
 
-    public isNumber(arg: Expression): Expression {
+    public isNumber(arg: Expression): Reference {
         return this.invoker.apply("isNumber", arg)
     }
 
-    public isString(arg: Expression): Expression {
+    public isString(arg: Expression): Reference {
         return this.invoker.apply("isString", arg)
     }
 
-    public isBoolean(arg: Expression): Expression {
+    public isBoolean(arg: Expression): Reference {
         return this.invoker.apply("isBoolean", arg)
     }
 
-    public isList(arg: Expression): Expression {
+    public isList(arg: Expression): Reference {
         return this.invoker.apply("isList", arg)
     }
 
-    public isMap(arg: Expression): Expression {
+    public isMap(arg: Expression): Reference {
         return this.invoker.apply("isMap", arg)
     }
 
-    public matches(arg1: Expression, arg2: Expression): Expression {
+    public matches(arg1: Expression, arg2: Expression): Reference {
         return this.invoker.apply("matches", arg1, arg2)
     }
 
-    public parseJson(arg: Expression): Expression {
+    public parseJson(arg: Expression): Reference {
         return this.invoker.apply("parseJson", arg)
     }
 
@@ -139,11 +139,11 @@ export class Util {
         this.invoker.apply("qr", r)
     }
 
-    public toJson(arg: Expression): Expression {
+    public toJson(arg: Expression): Reference {
         return this.invoker.apply("toJson", arg)
     }
 
-    public typeOf(arg: Expression): Expression {
+    public typeOf(arg: Expression): Reference {
         return this.invoker.apply("typeOf", arg)
     }
 
@@ -151,15 +151,15 @@ export class Util {
         this.invoker.apply("unauthorized")
     }
 
-    public urlEncode(arg: Expression): Expression {
+    public urlEncode(arg: Expression): Reference {
         return this.invoker.apply("urlEncode", arg)
     }
 
-    public urlDecode(arg: Expression): Expression {
+    public urlDecode(arg: Expression): Reference {
         return this.invoker.apply("urlDecode", arg)
     }
 
-    public validate(cond: Expression, msg?: Expression, errorType?: Expression, data?: Expression): Expression {
+    public validate(cond: Expression, msg?: Expression, errorType?: Expression, data?: Expression): Reference {
         return this.invoker.apply("validate", cond, msg, errorType, data)
     }
 }

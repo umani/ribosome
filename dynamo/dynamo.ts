@@ -2,6 +2,7 @@ import { MappingTemplateVersion } from "../mapping-template"
 import { TemplateBuilder } from "../builder"
 import { Reference, Expression, Method } from "../vtl/reference"
 import { ConditionExpression, Query } from "./dynamo-conditions"
+import { DataSource } from "../appsync/data-source"
 import { DynamoDBUtils } from "../appsync/dynamodb-utils"
 import { Util } from "../appsync/util"
 import { Update, UpdateExpression } from "./dynamo-update"
@@ -63,10 +64,10 @@ export interface TransactWriteItems {
 export class DynamoDbRequestUtils {
     public constructor(readonly builder: TemplateBuilder) {}
 
-    private keyToDynamoJson(pk: PrimaryKey): PrimaryKey {
+    private keyToDynamo(pk: PrimaryKey): PrimaryKey {
         return Object.entries(pk).reduce((acc, [k, v]) => {
             if (!(v instanceof Method) || !v.name.includes("util.dynamodb")) {
-                v = new DynamoDBUtils(this.builder).toDynamoDBJson(v)
+                v = new DynamoDBUtils(this.builder).toDynamoDB(v)
             }
             return { ...acc, [k]: v }
         }, {} as PrimaryKey)
@@ -78,49 +79,49 @@ export class DynamoDbRequestUtils {
         }
         const values = this.builder.map(attrs.projecting)
         Object.entries(attrs.values).forEach(([k, v]) => new Util(this.builder).quiet(values?.put(k, v.consume())))
-        return new DynamoDBUtils(this.builder).toMapValuesJson(values)
+        return new DynamoDBUtils(this.builder).toMapValues(values)
     }
 
     public putItem(props: PutItemProps): Reference {
         const values = this.prepareAttributes(props.attributes)
-        return this.builder.literal({
+        return new DataSource(this.builder, {
             operation: "PutItem",
             version: MappingTemplateVersion.V1,
-            key: this.keyToDynamoJson(props.key),
+            key: this.keyToDynamo(props.key),
             ...(values ? { attributeValues: values } : {}),
             ...(props.cond ? { condition: props.cond.resolve(this.builder) } : {}),
         })
     }
 
     public updateItem(props: UpdateItemProps): Reference {
-        return this.builder.literal({
+        return new DataSource(this.builder, {
             operation: "UpdateItem",
             version: MappingTemplateVersion.V1,
-            key: this.keyToDynamoJson(props.key),
+            key: this.keyToDynamo(props.key),
             update: new Update(props.update).resolve(this.builder),
             ...(props.cond ? { condition: props.cond.resolve(this.builder) } : {}),
         })
     }
 
     public getItem(props: GetItemProps): Reference {
-        return this.builder.literal({
+        return new DataSource(this.builder, {
             operation: "GetItem",
             version: MappingTemplateVersion.V1,
-            key: this.keyToDynamoJson(props.key),
+            key: this.keyToDynamo(props.key),
         })
     }
 
     public deleteItem(props: DeleteItemProps): Reference {
-        return this.builder.literal({
+        return new DataSource(this.builder, {
             operation: "DeleteItem",
             version: MappingTemplateVersion.V1,
-            key: this.keyToDynamoJson(props.key),
+            key: this.keyToDynamo(props.key),
             ...(props.cond ? { condition: props.cond.resolve(this.builder) } : {}),
         })
     }
 
     public query(q: Query): Reference {
-        return this.builder.literal({
+        return new DataSource(this.builder, {
             operation: "Query",
             version: MappingTemplateVersion.V1,
             query: q.resolve(this.builder),
@@ -130,7 +131,7 @@ export class DynamoDbRequestUtils {
     public transactWrite(tx: TransactWriteItems): Reference {
         const common = (item: TransactWriteItemProps): Record<string, unknown> => ({
             table: item.tableName,
-            key: this.keyToDynamoJson(item.key),
+            key: this.keyToDynamo(item.key),
             ...(item.cond
                 ? {
                       condition: {
@@ -163,7 +164,7 @@ export class DynamoDbRequestUtils {
             }),
         )
 
-        return this.builder.literal({
+        return new DataSource(this.builder, {
             version: MappingTemplateVersion.V2,
             operation: "TransactWriteItems",
             transactItems: [...puts, ...deletes, ...updates],

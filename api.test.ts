@@ -29,8 +29,8 @@ test("Simple template", () => {
   "operation": "PutItem",
   "version": "2017-02-28",
   "key": {
-    "pk": \${util.dynamodb.toDynamoDBJson(\${var0})},
-    "sk": \${util.dynamodb.toDynamoDBJson(\${ctx.args.arg})}
+    "pk": \${util.dynamodb.toDynamoDB(\${var0})},
+    "sk": \${util.dynamodb.toDynamoDB(\${ctx.args.arg})}
   }
 }`)
 })
@@ -116,10 +116,10 @@ test("DynamoDB templates", () => {
   "operation": "PutItem",
   "version": "2017-02-28",
   "key": {
-    "pk": \${util.dynamodb.toDynamoDBJson("id")},
-    "sk": \${util.dynamodb.toDynamoDBJson(\${ctx.args.sk})}
+    "pk": \${util.dynamodb.toDynamoDB("id")},
+    "sk": \${util.dynamodb.toDynamoDB(\${ctx.args.sk})}
   },
-  "attributeValues": \${util.dynamodb.toMapValuesJson(\${var0})}
+  "attributeValues": \${util.dynamodb.toMapValues(\${var0})}
 }`)
 
     const get = Api.requestTemplate(r => {
@@ -134,8 +134,8 @@ test("DynamoDB templates", () => {
   "operation": "GetItem",
   "version": "2017-02-28",
   "key": {
-    "pk": \${util.dynamodb.toDynamoDBJson("id")},
-    "sk": \${util.dynamodb.toDynamoDBJson(\${ctx.args.sk})}
+    "pk": \${util.dynamodb.toDynamoDB("id")},
+    "sk": \${util.dynamodb.toDynamoDB(\${ctx.args.sk})}
   }
 }`)
 })
@@ -285,10 +285,10 @@ test("TransactPut", () => {
     console.log(req)
 })
 
-describe("UpdatePortfolio", () => {
+describe("Update", () => {
     Api.setGlobalVersion(MappingTemplateVersion.V2)
 
-    describe("set", () => {
+    test("set", () => {
         const req = Api.requestTemplate(r => {
             r.dynamoDb.updateItem({
                 key: {
@@ -329,7 +329,7 @@ describe("UpdatePortfolio", () => {
         console.log(req)
     })
 
-    describe("remove", () => {
+    test("remove", () => {
         const req = Api.requestTemplate(r => {
             r.dynamoDb.updateItem({
                 key: {
@@ -345,7 +345,7 @@ describe("UpdatePortfolio", () => {
         console.log(req)
     })
 
-    describe("delete", () => {
+    test("delete", () => {
         const req = Api.requestTemplate(r => {
             r.dynamoDb.updateItem({
                 key: {
@@ -364,35 +364,39 @@ describe("UpdatePortfolio", () => {
 
 test("can modify DynamoDB operation", () => {
     const req = Api.requestTemplate(r => {
-        const op = r.variable(r.dynamoDb.transactWrite({
-            puts: [
-                {
-                    tableName: "table",
-                    key: {
-                        PK: r.literal("id1"),
-                    },
-                    attributes: {
-                        values: {
-                            attr: r.literal("blah"),
-                        }
-                    },
-                },
-            ],
-        }))
-        r.if(r.literal(2).eq(r.literal(4)), () => {
-            const delOp = r.variable(r.dynamoDb.transactWrite({
-                deletes: [
+        const op = r.variable(
+            r.dynamoDb.transactWrite({
+                puts: [
                     {
                         tableName: "table",
                         key: {
-                            PK: r.literal("id2"),
+                            PK: r.literal("id1"),
+                        },
+                        attributes: {
+                            values: {
+                                attr: r.literal("blah"),
+                            },
                         },
                     },
                 ],
-            }))
+            }),
+        )
+        r.if(r.literal(2).eq(r.literal(4)), () => {
+            const delOp = r.variable(
+                r.dynamoDb.transactWrite({
+                    deletes: [
+                        {
+                            tableName: "table",
+                            key: {
+                                PK: r.literal("id2"),
+                            },
+                        },
+                    ],
+                }),
+            )
             op.access("transactItems").invoke("add", delOp.access("transactItems").index(0))
         })
-        r.ret(op)
+        r.util.toJson(op)
     })
     console.log(req)
 })

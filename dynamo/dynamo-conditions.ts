@@ -21,7 +21,7 @@ export class ExpressionValuesAliasGenerator {
         if (alias === undefined) {
             alias = `:arg${this.generator++}`
             this.dedup[attrStr] = alias
-            this.result[alias] = new DynamoDBUtils(this.builder).toDynamoDBJson(attributeValue)
+            this.result[alias] = new DynamoDBUtils(this.builder).toDynamoDB(attributeValue)
         }
         return alias
     }
@@ -66,10 +66,12 @@ abstract class BaseCondition {
             expressionValues: new ExpressionValuesAliasGenerator(builder),
         }
         const condition = this.resolveCondition(collector)
-        const expressionOrEmpty = (k: keyof OperandCollector): Partial<OperandCollector[keyof OperandCollector]> => 
-            Object.entries(collector[k].result).length > 0 ? {
-                [k]: collector[k].result
-            } : {}
+        const expressionOrEmpty = (k: keyof OperandCollector): Partial<OperandCollector[keyof OperandCollector]> =>
+            Object.entries(collector[k].result).length > 0
+                ? {
+                      [k]: collector[k].result,
+                  }
+                : {}
         return {
             expression: condition,
             ...expressionOrEmpty("expressionNames"),
