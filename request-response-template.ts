@@ -2,7 +2,7 @@ import { Util } from "./appsync/util"
 import { Context, ResultContext } from "./appsync/context"
 import { TemplateBuilder } from "./builder"
 import { DynamoDbRequestUtils } from "./dynamo/dynamo"
-import { DataSource } from "appsync/data-source"
+import { DataSource } from "./appsync/data-source"
 
 export abstract class RequestResponseTemplate extends TemplateBuilder {
     readonly util = new Util(this)
