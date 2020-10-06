@@ -26,33 +26,41 @@ export interface PutItemProps {
 }
 
 export interface UpdateItemProps {
-    key: PrimaryKey
-    update: UpdateExpression
-    cond?: ConditionExpression
+    readonly key: PrimaryKey
+    readonly update: UpdateExpression
+    readonly cond?: ConditionExpression
 }
 
 export interface GetItemProps {
-    key: PrimaryKey
+    readonly key: PrimaryKey
 }
 
 export interface DeleteItemProps {
-    key: PrimaryKey
-    cond?: ConditionExpression
+    readonly key: PrimaryKey
+    readonly cond?: ConditionExpression
+}
+
+export interface QueryProps {
+    readonly index?: string
+    readonly nextToken?: string
+    readonly limit?: number
+    readonly scanIndexForward?: boolean
+    readonly consistentRead?: boolean
 }
 
 export interface TransactWriteItemProps {
-    tableName: string
-    key: PrimaryKey
-    returnValuesOnConditionCheckFailure?: boolean
-    cond?: ConditionExpression
+    readonly tableName: string
+    readonly key: PrimaryKey
+    readonly returnValuesOnConditionCheckFailure?: boolean
+    readonly cond?: ConditionExpression
 }
 
 export interface TransactPutItemProps extends TransactWriteItemProps {
-    attributes?: AttributeValues
+    readonly attributes?: AttributeValues
 }
 
 export interface TransactUpdateItemProps extends TransactWriteItemProps {
-    update?: UpdateExpression
+    readonly update?: UpdateExpression
 }
 
 export interface TransactWriteItems {
@@ -120,11 +128,16 @@ export class DynamoDbRequestUtils {
         })
     }
 
-    public query(q: Query): DataSource {
+    public query(q: Query, props?: QueryProps): DataSource {
         return new DataSource(this.builder, {
             operation: "Query",
             version: MappingTemplateVersion.V1,
             query: q.resolve(this.builder),
+            ...(props?.index !== undefined ? { index: props.index } : {}),
+            ...(props?.consistentRead !== undefined ? { consistentRead: props.consistentRead } : {}),
+            ...(props?.limit !== undefined ? { limit: props.limit } : {}),
+            ...(props?.nextToken !== undefined ? { nextToken: props.nextToken } : {}),
+            ...(props?.scanIndexForward !== undefined ? { scanIndexForward: props.scanIndexForward } : {}),
         })
     }
 
