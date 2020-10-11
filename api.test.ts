@@ -400,3 +400,10 @@ test("can modify DynamoDB operation", () => {
     })
     console.log(req)
 })
+
+test("invoke chain", () => {
+    const req = Api.requestTemplate(r => {
+        r.ctx.arg("a").invoke("toLowerCase").invoke("replace", "-", " ")
+    })
+    console.log(req)
+})

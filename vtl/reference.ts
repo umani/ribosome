@@ -232,19 +232,16 @@ export class MapReference extends Reference {
 // TODO: Array reference with index method
 
 export class Method extends Reference {
-    private readonly args: Literal[]
-
-    public constructor(builder: TemplateBuilder, target: string, public readonly method: string, args: unknown[]) {
-        super(builder, target)
-        this.args = args.map(a => new Literal(this.builder, a).consume())
+    public constructor(builder: TemplateBuilder, target: string, method: string, args: unknown[]) {
+        super(
+            builder,
+            `${target}.${method}(${args.map(a => new Literal(builder, a).consume().renderTemplate(0)).join(", ")})`,
+        )
     }
 
     public renderTemplate(i: number): string {
         const prefix = this._quiet ? "$!" : "$"
-        return indent(
-            i,
-            `${prefix}{${this.name}.${this.method}(${this.args.map(a => a.renderTemplate(0)).join(", ")})}`,
-        )
+        return indent(i, `${prefix}{${this.name}}`)
     }
 }
 
