@@ -1,3 +1,3 @@
+*.log
 dist
-yarn-error.log
 node_modules

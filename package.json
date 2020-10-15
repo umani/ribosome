@@ -1,16 +1,18 @@
 {
-    "name": "app-sync-mapping-template-model",
-    "author": "Duarte Nunes",
-    "version": "0.1.20",
-    "description": "A library exploring an object model for AWS AppSync Mapping Templates",
+    "name": "@futuratrepadeira/ribosome",
+    "version": "0.1.0",
+    "description": "A library to help produce AppSync VTL templates using a simple object model",
     "license": "UNLICENSED",
-    "publishConfig": { "registry": "https://npm.pkg.github.com/" },
-    "repository": "git@github.com:duarten/appsync-mapping-templates.git",
+    "author": "ola@uma.ni",
+    "repository": {
+        "type": "git",
+        "url": "git@github.com:futuratrepadeira/ribosome.git"
+    },
+    "bugs": {
+        "url": "https://github.com/futuratrepadeira/ribosome/issues"
+    },
     "main": "dist/index.js",
     "types": "dist/index.d.ts",
-    "files": [
-        "dist"
-    ],
     "scripts": {
         "build": "tsc",
         "lint": "eslint --fix '**/*.ts'",
@@ -26,8 +28,6 @@
         "eslint-plugin-prettier": "3.1.4",
         "jest": "26.4.2",
         "prettier": "2.1.2",
-        "ts-jest": "26.4.1",
-        "ts-node": "9.0.0",
         "typescript": "4.0.3"
     },
     "eslintConfig": {
@@ -82,5 +82,8 @@
         "singleQuote": false,
         "printWidth": 120,
         "tabWidth": 4
+    },
+    "publishConfig": {
+        "access": "public"
     }
 }
