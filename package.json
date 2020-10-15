@@ -1,9 +1,10 @@
 {
     "name": "@futuratrepadeira/ribosome",
-    "version": "0.1.0",
+    "version": "0.1.1",
     "description": "A library to help produce AppSync VTL templates using a simple object model",
     "license": "UNLICENSED",
     "author": "ola@uma.ni",
+    "private": true,
     "repository": {
         "type": "git",
         "url": "git@github.com:futuratrepadeira/ribosome.git"
@@ -14,9 +15,15 @@
     "main": "dist/index.js",
     "types": "dist/index.d.ts",
     "scripts": {
+        "prebuild": "yarn run clean",
         "build": "tsc",
+        "postbuild": "yarn run prepdist",
+        "clean": "rimraf -r dist",
+        "prepdist": "node ./config/prepareDist.js",
         "lint": "eslint --fix '**/*.ts'",
-        "test": "jest --colors"
+        "test": "jest --config ./config/jest.config.js",
+        "predeploy": "yarn run build",
+        "deploy": "cd dist && yarn publish --access public"
     },
     "devDependencies": {
         "@types/jest": "26.0.14",
@@ -28,6 +35,8 @@
         "eslint-plugin-prettier": "3.1.4",
         "jest": "26.5.3",
         "prettier": "2.1.2",
+        "rimraf": "3.0.2",
+        "ts-jest": "26.4.1",
         "typescript": "4.0.3"
     },
     "eslintConfig": {
