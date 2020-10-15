@@ -44,4 +44,5 @@ fs.writeFileSync(`${distRoot}/package.json`, distPackageJson)
 const srcDir = `${__dirname}/..`
 const destDir = `${srcDir}/dist`
 fs.copyFileSync(`${srcDir}/README.md`, `${destDir}/README.md`)
+fs.copyFileSync(`${srcDir}/CHANGELOG.md`, `${destDir}/CHANGELOG.md`)
 fs.copyFileSync(`${srcDir}/LICENSE`, `${destDir}/LICENSE`)

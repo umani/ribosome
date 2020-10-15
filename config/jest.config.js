@@ -11,7 +11,7 @@ module.exports = {
             tsConfig: compilerOptions,
         },
     },
-    moduleFileExtensions: ["ts"],
+    moduleFileExtensions: ["ts", "js"],
     testPathIgnorePatterns: ["/node_modules/", "/dist/"],
     modulePathIgnorePatterns: ["/dist/"],
 }
