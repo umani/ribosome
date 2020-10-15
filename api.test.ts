@@ -1,5 +1,6 @@
 import { Api } from "./api"
 import { MappingTemplateVersion } from "./mapping-template"
+import { TransactionOperation } from "./dynamo/dynamo"
 import { Query, ConditionExpression, Attribute, ListItem } from "./dynamo/dynamo-conditions"
 
 test("Simple template", () => {
@@ -245,42 +246,40 @@ test("Lambda invoke", () => {
 test("TransactPut", () => {
     Api.setGlobalVersion(MappingTemplateVersion.V2)
     const req = Api.requestTemplate(r => {
-        r.dynamoDb.transactWrite({
-            puts: [
-                {
-                    tableName: "thecube",
-                    key: {
-                        pk: r.literal("id"),
-                        sk: r.ctx.arg("sk"),
+        r.dynamoDb.transactWrite(
+            {
+                tableName: "thecube",
+                key: {
+                    pk: r.literal("id"),
+                    sk: r.ctx.arg("sk"),
+                },
+                op: TransactionOperation.PutItem,
+                attributes: {
+                    values: {
+                        attr1: r.literal(1),
+                        attr2: r.ctx.stash.get("val"),
                     },
-                    attributes: {
-                        values: {
-                            attr1: r.literal(1),
-                            attr2: r.ctx.stash.get("val"),
+                },
+                cond: ConditionExpression.attributeNotExists("alias"),
+            },
+            {
+                tableName: "thecube",
+                key: {
+                    pk: r.literal("id"),
+                    sk: r.ctx.arg("sk"),
+                },
+                op: TransactionOperation.UpdateItem,
+                update: {
+                    set: [
+                        {
+                            attribute: Attribute.from("bla"),
+                            value: r.literal(2),
                         },
-                    },
-                    cond: ConditionExpression.attributeNotExists("alias"),
+                    ],
                 },
-            ],
-            updates: [
-                {
-                    tableName: "thecube",
-                    key: {
-                        pk: r.literal("id"),
-                        sk: r.ctx.arg("sk"),
-                    },
-                    update: {
-                        set: [
-                            {
-                                attribute: Attribute.from("bla"),
-                                value: r.literal(2),
-                            },
-                        ],
-                    },
-                    cond: ConditionExpression.attributeNotExists("bla"),
-                },
-            ],
-        })
+                cond: ConditionExpression.attributeNotExists("bla"),
+            },
+        )
     })
     console.log(req)
 })
@@ -366,32 +365,26 @@ test("can modify DynamoDB operation", () => {
     const req = Api.requestTemplate(r => {
         const op = r.variable(
             r.dynamoDb.transactWrite({
-                puts: [
-                    {
-                        tableName: "table",
-                        key: {
-                            PK: r.literal("id1"),
-                        },
-                        attributes: {
-                            values: {
-                                attr: r.literal("blah"),
-                            },
-                        },
+                tableName: "table",
+                key: {
+                    PK: r.literal("id1"),
+                },
+                op: TransactionOperation.PutItem,
+                attributes: {
+                    values: {
+                        attr: r.literal("blah"),
                     },
-                ],
+                },
             }),
         )
         r.if(r.literal(2).eq(r.literal(4)), () => {
             const delOp = r.variable(
                 r.dynamoDb.transactWrite({
-                    deletes: [
-                        {
-                            tableName: "table",
-                            key: {
-                                PK: r.literal("id2"),
-                            },
-                        },
-                    ],
+                    tableName: "table",
+                    key: {
+                        PK: r.literal("id2"),
+                    },
+                    op: TransactionOperation.DeleteItem,
                 }),
             )
             op.access("transactItems").invoke("add", delOp.access("transactItems").index(0))

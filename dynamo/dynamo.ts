@@ -48,25 +48,23 @@ export interface QueryProps {
     readonly consistentRead?: boolean
 }
 
+export enum TransactionOperation {
+    PutItem = "PutItem",
+    UpdateItem = "UpdateItem",
+    DeleteItem = "DeleteItem",
+    //ConditionCheck = "ConditionCheck",
+}
+
 export interface TransactWriteItemProps {
     readonly tableName: string
     readonly key: PrimaryKey
+    readonly op: TransactionOperation
     readonly returnValuesOnConditionCheckFailure?: boolean
     readonly cond?: ConditionExpression
-}
-
-export interface TransactPutItemProps extends TransactWriteItemProps {
+    // Valid only if op is Operation.PutItem
     readonly attributes?: AttributeValues
-}
-
-export interface TransactUpdateItemProps extends TransactWriteItemProps {
+    // Valid only if op is Operation.UpdateItem
     readonly update?: UpdateExpression
-}
-
-export interface TransactWriteItems {
-    readonly puts?: TransactPutItemProps[]
-    readonly deletes?: TransactWriteItemProps[]
-    readonly updates?: TransactUpdateItemProps[]
 }
 
 export class DynamoDbRequestUtils {
@@ -141,10 +139,11 @@ export class DynamoDbRequestUtils {
         })
     }
 
-    public transactWrite(tx: TransactWriteItems): DataSource {
-        const common = (item: TransactWriteItemProps): Record<string, unknown> => ({
+    public transactWrite(...tx: TransactWriteItemProps[]): DataSource {
+        const transactItems = tx.map(item => ({
             table: item.tableName,
             key: this.keyToDynamo(item.key),
+            operation: item.op,
             ...(item.cond
                 ? {
                       condition: {
@@ -153,34 +152,22 @@ export class DynamoDbRequestUtils {
                       },
                   }
                 : {}),
-        })
-        const puts = (tx.puts || []).map(p => {
-            const values = this.prepareAttributes(p.attributes)
-            return this.builder.literal({
-                ...common(p),
-                operation: "PutItem",
-                attributeValues: values,
-            })
-        })
-        const deletes = (tx.deletes || []).map(d =>
-            this.builder.literal({
-                ...common(d),
-                operation: "DeleteItem",
-            }),
-        )
-
-        const updates = (tx.updates || []).map(d =>
-            this.builder.literal({
-                ...common(d),
-                operation: "UpdateItem",
-                update: new Update(d.update || {}).resolve(this.builder),
-            }),
-        )
+            ...(item.op === TransactionOperation.PutItem
+                ? {
+                      attributeValues: this.prepareAttributes(item.attributes),
+                  }
+                : {}),
+            ...(item.op === TransactionOperation.DeleteItem
+                ? {
+                      update: new Update(item.update || {}).resolve(this.builder),
+                  }
+                : {}),
+        }))
 
         return new DataSource(this.builder, {
             version: MappingTemplateVersion.V2,
             operation: "TransactWriteItems",
-            transactItems: [...puts, ...deletes, ...updates],
+            transactItems,
         })
     }
 }
