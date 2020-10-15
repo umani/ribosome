@@ -4,6 +4,8 @@
     "version": "0.1.20",
     "description": "A library exploring an object model for AWS AppSync Mapping Templates",
     "license": "UNLICENSED",
+    "publishConfig": { "registry": "https://npm.pkg.github.com/" },
+    "repository": "git@github.com:duarten/appsync-mapping-templates.git",
     "main": "dist/index.js",
     "types": "dist/index.d.ts",
     "files": [
