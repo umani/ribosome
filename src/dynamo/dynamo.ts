@@ -157,7 +157,7 @@ export class DynamoDbRequestUtils {
                       attributeValues: this.prepareAttributes(item.attributes),
                   }
                 : {}),
-            ...(item.op === TransactionOperation.DeleteItem
+            ...(item.op === TransactionOperation.UpdateItem
                 ? {
                       update: new Update(item.update || {}).resolve(this.builder),
                   }
