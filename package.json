@@ -23,7 +23,7 @@
         "lint": "eslint --fix '**/*.ts'",
         "test": "jest --config ./config/jest.config.js",
         "prerelease": "yarn run build && yarn run lint && yarn run test",
-        "prepublish": "gh-release",
+        "prepublish": "gh-release -y",
         "release": "cd dist && yarn publish --access public"
     },
     "devDependencies": {
