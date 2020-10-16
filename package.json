@@ -24,7 +24,7 @@
         "test": "jest --config ./config/jest.config.js",
         "prerelease": "yarn run build && yarn run lint && yarn run test",
         "prepublish": "gh-release -y",
-        "release": "cd dist && yarn publish --access public"
+        "release": "cd dist && yarn publish --access public --frozen-lockfile"
     },
     "devDependencies": {
         "@types/jest": "26.0.14",
