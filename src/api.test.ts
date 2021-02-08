@@ -4,6 +4,7 @@ import { TransactionOperation } from "./dynamo/dynamo"
 import { Query, ConditionExpression, Attribute, ListItem } from "./dynamo/dynamo-conditions"
 
 test("Simple template", () => {
+    Api.setGlobalVersion(MappingTemplateVersion.V1)
     const t = Api.requestTemplate(r => {
         const id = r.variable("ENTITY#" + r.util.autoId())
         r.unless(r.ctx.identity.groups.contains("admins"), () => {
@@ -96,6 +97,7 @@ $!{var0.put("substring", \${var5})}
 })
 
 test("DynamoDB templates", () => {
+    Api.setGlobalVersion(MappingTemplateVersion.V1)
     const put = Api.requestTemplate(r => {
         r.dynamoDb.putItem({
             key: {
