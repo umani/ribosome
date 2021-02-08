@@ -1,4 +1,3 @@
-import { MappingTemplateVersion } from "../mapping-template"
 import { TemplateBuilder } from "../builder"
 import { Reference, Expression, Method } from "../vtl/reference"
 import { ConditionExpression, Query } from "./dynamo-conditions"
@@ -92,7 +91,7 @@ export class DynamoDbRequestUtils {
         const values = this.prepareAttributes(props.attributes)
         return new DataSource(this.builder, {
             operation: "PutItem",
-            version: MappingTemplateVersion.V1,
+            version: this.builder.version,
             key: this.keyToDynamo(props.key),
             ...(values ? { attributeValues: values } : {}),
             ...(props.cond ? { condition: props.cond.resolve(this.builder) } : {}),
@@ -102,7 +101,7 @@ export class DynamoDbRequestUtils {
     public updateItem(props: UpdateItemProps): DataSource {
         return new DataSource(this.builder, {
             operation: "UpdateItem",
-            version: MappingTemplateVersion.V1,
+            version: this.builder.version,
             key: this.keyToDynamo(props.key),
             update: new Update(props.update).resolve(this.builder),
             ...(props.cond ? { condition: props.cond.resolve(this.builder) } : {}),
@@ -112,7 +111,7 @@ export class DynamoDbRequestUtils {
     public getItem(props: GetItemProps): DataSource {
         return new DataSource(this.builder, {
             operation: "GetItem",
-            version: MappingTemplateVersion.V1,
+            version: this.builder.version,
             key: this.keyToDynamo(props.key),
         })
     }
@@ -120,7 +119,7 @@ export class DynamoDbRequestUtils {
     public deleteItem(props: DeleteItemProps): DataSource {
         return new DataSource(this.builder, {
             operation: "DeleteItem",
-            version: MappingTemplateVersion.V1,
+            version: this.builder.version,
             key: this.keyToDynamo(props.key),
             ...(props.cond ? { condition: props.cond.resolve(this.builder) } : {}),
         })
@@ -129,7 +128,7 @@ export class DynamoDbRequestUtils {
     public query(q: Query, props?: QueryProps): DataSource {
         return new DataSource(this.builder, {
             operation: "Query",
-            version: MappingTemplateVersion.V1,
+            version: this.builder.version,
             query: q.resolve(this.builder),
             ...(props?.index !== undefined ? { index: props.index } : {}),
             ...(props?.consistentRead !== undefined ? { consistentRead: props.consistentRead } : {}),
@@ -165,7 +164,7 @@ export class DynamoDbRequestUtils {
         }))
 
         return new DataSource(this.builder, {
-            version: MappingTemplateVersion.V2,
+            version: this.builder.version,
             operation: "TransactWriteItems",
             transactItems,
         })
