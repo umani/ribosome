@@ -1,6 +1,6 @@
 {
     "name": "@futuratrepadeira/ribosome",
-    "version": "0.1.4",
+    "version": "0.1.5",
     "description": "A library to help produce AppSync VTL templates using a simple object model",
     "license": "UNLICENSED",
     "author": "ola@uma.ni",
